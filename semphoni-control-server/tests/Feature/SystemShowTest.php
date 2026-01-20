@@ -5,7 +5,9 @@ use App\Models\User;
 use App\Models\Client;
 use App\Models\ClientLog;
 use App\Models\ClientScreenshot;
+use App\Events\ClientCommandDispatched;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -148,5 +150,35 @@ test('system show loads saved screenshot as webp data url when available', funct
 
     Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])
         ->assertSet('screenshotDataUrl', 'data:image/webp;base64,UklGRg==');
+});
+
+test('visual feed screenshot request includes configured monitor number', function () {
+    Event::fake([ClientCommandDispatched::class]);
+
+    /** @var User $user */
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $system = System::factory()->create();
+
+    $client = Client::factory()->create([
+        'system_id' => $system->id,
+        'can_screenshot' => true,
+        'is_active' => true,
+    ]);
+
+    Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])
+        ->set('clientId', $client->id)
+        ->set('visualFeedMonitorNr', 3)
+        ->set('visualFeedEnabled', true);
+
+    Event::assertDispatched(ClientCommandDispatched::class, function (ClientCommandDispatched $event): bool {
+        expect($event->commandName)->toBe('get_screenshot');
+        expect($event->payload)->toMatchArray([
+            'monitor_nr' => 3,
+        ]);
+
+        return true;
+    });
 });
 

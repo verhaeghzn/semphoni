@@ -105,7 +105,7 @@
                 <div
                     class="rounded-xl border border-neutral-200 bg-white p-4 space-y-3 dark:border-neutral-800 dark:bg-neutral-950"
                     @if ($visualFeedEnabled)
-                        wire:poll.5s="refreshScreenshot"
+                        wire:poll.{{ $visualFeedIntervalSeconds }}s="refreshScreenshot"
                     @endif
                     @if ($canControl)
                         wire:poll.60s="keepControlLockAlive"
@@ -115,7 +115,7 @@
                         <div class="min-w-0">
                             <flux:heading>{{ __('Visual feed') }}</flux:heading>
                             <flux:text class="mt-1 text-xs text-zinc-500">
-                                {{ __('Fetches a screenshot every 5 seconds while enabled.') }}
+                                {{ __('Fetches a screenshot every :seconds seconds (monitor :monitor).', ['seconds' => $visualFeedIntervalSeconds, 'monitor' => $visualFeedMonitorNr]) }}
                             </flux:text>
                         </div>
 
@@ -137,6 +137,26 @@
                         </div>
                     </div>
 
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <flux:input
+                            wire:model.live="visualFeedIntervalSeconds"
+                            :label="__('Interval (seconds)')"
+                            type="number"
+                            min="1"
+                            max="60"
+                            :disabled="! $canControl"
+                        />
+
+                        <flux:input
+                            wire:model.live="visualFeedMonitorNr"
+                            :label="__('Monitor #')"
+                            type="number"
+                            min="1"
+                            max="16"
+                            :disabled="! $canControl"
+                        />
+                    </div>
+
                     @if (! $visualFeedEnabled && $lastScreenshotTakenAtIso)
                         <flux:text class="text-xs text-zinc-500">
                             {{ __('Last captured:') }}
@@ -150,7 +170,7 @@
                         <div class="h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800" role="progressbar" aria-label="{{ __('Visual feed refresh interval') }}">
                             <div
                                 class="h-full origin-left bg-neutral-900 dark:bg-white"
-                                style="animation: visual-feed-interval 5s linear infinite;"
+                                style="animation: visual-feed-interval {{ $visualFeedIntervalSeconds }}s linear infinite;"
                             ></div>
                         </div>
                     @endif

@@ -34,6 +34,10 @@ class Show extends Component
 
     public bool $visualFeedFullscreen = false;
 
+    public int $visualFeedIntervalSeconds = 5;
+
+    public int $visualFeedMonitorNr = 1;
+
     public ?string $lastCommandCorrelationId = null;
 
     public ?string $lastScreenshotCorrelationId = null;
@@ -214,6 +218,16 @@ class Show extends Component
         $this->requestScreenshot();
     }
 
+    public function updatedVisualFeedIntervalSeconds(mixed $seconds): void
+    {
+        $this->visualFeedIntervalSeconds = max(1, min(60, (int) $seconds));
+    }
+
+    public function updatedVisualFeedMonitorNr(mixed $monitorNr): void
+    {
+        $this->visualFeedMonitorNr = max(1, min(16, (int) $monitorNr));
+    }
+
     public function refreshScreenshot(ClientCommandService $service): void
     {
         if (! $this->visualFeedEnabled) {
@@ -347,7 +361,7 @@ class Show extends Component
         $service ??= app(ClientCommandService::class);
 
         $this->lastScreenshotCorrelationId = $service->dispatchToClient($client, $command, [
-            'monitor_nr' => 1,
+            'monitor_nr' => $this->visualFeedMonitorNr,
         ]);
     }
 
