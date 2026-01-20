@@ -139,6 +139,32 @@ class HandleReverbMessageReceived
             'summary' => 'Heartbeat',
             'payload' => $payload,
         ]);
+
+        $this->pruneHeartbeats($client, is_int($heartbeatCommandId) ? $heartbeatCommandId : null);
+    }
+
+    private function pruneHeartbeats(Client $client, ?int $heartbeatCommandId, int $keep = 10): void
+    {
+        $baseQuery = ClientLog::query()
+            ->where('client_id', $client->id)
+            ->where('direction', LogDirection::Inbound)
+            ->where('summary', 'Heartbeat')
+            ->when($heartbeatCommandId !== null, function ($query) use ($heartbeatCommandId): void {
+                $query->where('command_id', $heartbeatCommandId);
+            });
+
+        $idsToKeep = (clone $baseQuery)
+            ->latest('id')
+            ->limit($keep)
+            ->pluck('id');
+
+        if ($idsToKeep->isEmpty()) {
+            return;
+        }
+
+        (clone $baseQuery)
+            ->whereNotIn('id', $idsToKeep)
+            ->delete();
     }
 
     /**

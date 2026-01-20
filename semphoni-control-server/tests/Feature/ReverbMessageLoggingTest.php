@@ -84,13 +84,23 @@ it('logs client heartbeats received via reverb', function () {
 
     expect($message)->toBeString();
 
-    event(new MessageReceived($connection, $message));
+    foreach (range(1, 12) as $i) {
+        event(new MessageReceived($connection, $message));
+    }
 
-    $log = ClientLog::query()->where('client_id', $client->id)->latest()->first();
+    $heartbeatLogs = ClientLog::query()
+        ->where('client_id', $client->id)
+        ->where('summary', 'Heartbeat')
+        ->where('command_id', $heartbeat->id)
+        ->orderByDesc('id')
+        ->get();
 
-    expect($log)->not->toBeNull();
-    expect($log->summary)->toBe('Heartbeat');
-    expect($log->command_id)->toBe($heartbeat->id);
-    expect($log->direction->value)->toBe('inbound');
+    expect($heartbeatLogs)->toHaveCount(10);
+
+    $latestLog = $heartbeatLogs->first();
+    expect($latestLog)->not->toBeNull();
+    expect($latestLog->summary)->toBe('Heartbeat');
+    expect($latestLog->command_id)->toBe($heartbeat->id);
+    expect($latestLog->direction->value)->toBe('inbound');
 });
 
