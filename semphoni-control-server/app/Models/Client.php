@@ -27,9 +27,6 @@ class Client extends Model
         'width_px',
         'height_px',
         'can_screenshot',
-        'last_screenshot_mime',
-        'last_screenshot_base64',
-        'last_screenshot_taken_at',
         'is_active',
     ];
 
@@ -37,7 +34,6 @@ class Client extends Model
     {
         return [
             'can_screenshot' => 'bool',
-            'last_screenshot_taken_at' => 'datetime',
             'is_active' => 'bool',
         ];
     }
@@ -78,6 +74,11 @@ class Client extends Model
                     ->where('summary', '!=', 'Heartbeat');
             })
             ->latestOfMany();
+    }
+
+    public function screenshot(): HasOne
+    {
+        return $this->hasOne(ClientScreenshot::class);
     }
 
     public function isActive(int $seconds = 20): bool

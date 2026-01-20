@@ -99,6 +99,7 @@ class AppServiceProvider extends ServiceProvider
 
                 ClientLog::query()->create([
                     'client_id' => $client->id,
+                    'system_id' => $client->system_id,
                     'direction' => LogDirection::Outbound,
                     'command_id' => null,
                     'summary' => $isAlive ? 'Client is online' : 'Client is offline',

@@ -4,6 +4,7 @@ use App\Models\System;
 use App\Models\User;
 use App\Models\Client;
 use App\Models\ClientLog;
+use App\Models\ClientScreenshot;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use function Pest\Laravel\actingAs;
@@ -18,11 +19,16 @@ test('system show page renders with tabs', function () {
         'name' => 'System A',
     ]);
 
-    Client::factory()->create([
+    $client = Client::factory()->create([
         'system_id' => $system->id,
         'name' => 'Client A',
-        'last_screenshot_png_base64' => 'iVBORw0KGgo=',
-        'last_screenshot_taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
+    ]);
+
+    ClientScreenshot::query()->create([
+        'client_id' => $client->id,
+        'mime' => 'image/png',
+        'base64' => 'iVBORw0KGgo=',
+        'taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
     ]);
 
     get(route('systems.show', $system, absolute: false))
@@ -128,12 +134,16 @@ test('system show loads saved screenshot as webp data url when available', funct
 
     $system = System::factory()->create();
 
-    Client::factory()->create([
+    $client = Client::factory()->create([
         'system_id' => $system->id,
         'name' => 'Client A',
-        'last_screenshot_mime' => 'image/webp',
-        'last_screenshot_base64' => 'UklGRg==',
-        'last_screenshot_taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
+    ]);
+
+    ClientScreenshot::query()->create([
+        'client_id' => $client->id,
+        'mime' => 'image/webp',
+        'base64' => 'UklGRg==',
+        'taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
     ]);
 
     Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])

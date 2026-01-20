@@ -134,6 +134,7 @@ class HandleReverbMessageReceived
 
         ClientLog::query()->create([
             'client_id' => $client->id,
+            'system_id' => $client->system_id,
             'direction' => LogDirection::Inbound,
             'command_id' => is_int($heartbeatCommandId) ? $heartbeatCommandId : null,
             'summary' => 'Heartbeat',
@@ -200,6 +201,7 @@ class HandleReverbMessageReceived
 
         ClientLog::query()->create([
             'client_id' => $client->id,
+            'system_id' => $client->system_id,
             'direction' => LogDirection::Inbound,
             'command_id' => is_int($commandId) ? $commandId : null,
             'summary' => $correlationId ? 'Command result ('.$correlationId.')' : 'Command result',
@@ -234,6 +236,7 @@ class HandleReverbMessageReceived
     {
         ClientLog::query()->create([
             'client_id' => $client->id,
+            'system_id' => $client->system_id,
             'direction' => LogDirection::Inbound,
             'command_id' => null,
             'summary' => $summary,

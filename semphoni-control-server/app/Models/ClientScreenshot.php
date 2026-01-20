@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
-use App\Enums\LogDirection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ClientLog extends Model
+class ClientScreenshot extends Model
 {
-    /** @use HasFactory<\Database\Factories\ClientLogFactory> */
+    /** @use HasFactory<\Database\Factories\ClientScreenshotFactory> */
     use HasFactory;
 
     /**
@@ -17,28 +16,20 @@ class ClientLog extends Model
      */
     protected $fillable = [
         'client_id',
-        'system_id',
-        'direction',
-        'command_id',
-        'summary',
-        'payload',
+        'mime',
+        'base64',
+        'taken_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'direction' => LogDirection::class,
-            'payload' => 'array',
+            'taken_at' => 'datetime',
         ];
     }
 
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
-    }
-
-    public function command(): BelongsTo
-    {
-        return $this->belongsTo(Command::class);
     }
 }

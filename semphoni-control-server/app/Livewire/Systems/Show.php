@@ -5,6 +5,7 @@ namespace App\Livewire\Systems;
 use App\Enums\ActionType;
 use App\Models\Client;
 use App\Models\ClientLog;
+use App\Models\ClientScreenshot;
 use App\Models\Command;
 use App\Models\System;
 use App\Services\ClientCommandService;
@@ -254,9 +255,7 @@ class Show extends Component
 
         $logs = ClientLog::query()
             ->with(['client.system', 'command'])
-            ->whereHas('client', function (Builder $clientQuery): void {
-                $clientQuery->where('system_id', $this->systemId);
-            })
+            ->where('system_id', $this->systemId)
             ->when(! $this->showHeartbeats, function (Builder $query): void {
                 $query->where(function (Builder $logQuery): void {
                     $logQuery
@@ -424,14 +423,22 @@ class Show extends Component
         $this->screenshotDataUrl = 'data:'.$mime.';base64,'.$imageBase64;
         $this->setLastScreenshotTimestamp($log->created_at);
 
-        Client::query()
+        $client = Client::query()
             ->where('system_id', $this->systemId)
-            ->whereKey($this->clientId)
-            ->update([
-                'last_screenshot_mime' => $mime,
-                'last_screenshot_base64' => $imageBase64,
-                'last_screenshot_taken_at' => $log->created_at,
-            ]);
+            ->find($this->clientId);
+
+        if (! $client instanceof Client) {
+            return false;
+        }
+
+        ClientScreenshot::query()->updateOrCreate(
+            ['client_id' => $client->id],
+            [
+                'mime' => $mime,
+                'base64' => $imageBase64,
+                'taken_at' => $log->created_at,
+            ],
+        );
 
         return true;
     }
@@ -444,18 +451,21 @@ class Show extends Component
 
         $client = Client::query()
             ->where('system_id', $this->systemId)
+            ->with('screenshot')
             ->find($this->clientId);
 
         if (! $client instanceof Client) {
             return;
         }
 
-        $mime = $client->last_screenshot_mime;
-        $imageBase64 = $client->last_screenshot_base64;
+        $screenshot = $client->screenshot;
+
+        $mime = $screenshot?->mime;
+        $imageBase64 = $screenshot?->base64;
 
         if (! is_string($imageBase64) || $imageBase64 === '') {
             $this->screenshotDataUrl = null;
-            $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
+            $this->setLastScreenshotTimestamp($screenshot?->taken_at);
 
             return;
         }
@@ -466,7 +476,7 @@ class Show extends Component
             || ! in_array($mime, ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'], true)
         ) {
             $this->screenshotDataUrl = null;
-            $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
+            $this->setLastScreenshotTimestamp($screenshot?->taken_at);
 
             return;
         }
@@ -475,7 +485,7 @@ class Show extends Component
 
         $this->screenshotDataUrl = 'data:'.$mime.';base64,'.$imageBase64;
 
-        $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
+        $this->setLastScreenshotTimestamp($screenshot?->taken_at);
     }
 
     private function setLastScreenshotTimestamp(?CarbonInterface $takenAt): void

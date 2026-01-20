@@ -44,6 +44,7 @@ class ClientCommandService
 
         ClientLog::query()->create([
             'client_id' => $client->id,
+            'system_id' => $client->system_id,
             'direction' => LogDirection::Outbound,
             'command_id' => $command->id,
             'summary' => 'Executed '.$command->name,

@@ -62,9 +62,7 @@ class Index extends Component
                 });
             })
             ->when($this->systemId !== null, function (Builder $query): void {
-                $query->whereHas('client', function (Builder $clientQuery): void {
-                    $clientQuery->where('system_id', $this->systemId);
-                });
+                $query->where('system_id', $this->systemId);
             })
             ->when($this->clientId !== null, function (Builder $query): void {
                 $query->where('client_id', $this->clientId);
