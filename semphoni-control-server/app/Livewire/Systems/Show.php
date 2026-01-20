@@ -190,7 +190,7 @@ class Show extends Component
             ->where('client_id', $this->clientId)
             ->where('payload->event', 'client-command-result')
             ->where('payload->data->correlation_id', $this->lastCommandCorrelationId)
-            ->latest()
+            ->latest('id')
             ->first();
 
         if (! $log instanceof ClientLog) {
@@ -266,7 +266,7 @@ class Show extends Component
                         ->where('summary', '!=', 'Heartbeat');
                 });
             })
-            ->latest()
+            ->latest('id')
             ->limit(200)
             ->get();
 
@@ -366,7 +366,7 @@ class Show extends Component
                     ->where('payload->data->correlation_id', $this->lastScreenshotCorrelationId)
                     ->orWhere('payload->data->correlationId', $this->lastScreenshotCorrelationId);
             })
-            ->latest()
+            ->latest('id')
             ->first();
 
         if (! $log instanceof ClientLog) {
@@ -460,7 +460,11 @@ class Show extends Component
             return;
         }
 
-        if (! is_string($mime) || $mime === '' || ! in_array($mime, ['image/jpeg', 'image/jpg'], true)) {
+        if (
+            ! is_string($mime)
+            || $mime === ''
+            || ! in_array($mime, ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'], true)
+        ) {
             $this->screenshotDataUrl = null;
             $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
 

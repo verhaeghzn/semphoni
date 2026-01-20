@@ -69,7 +69,7 @@ class Index extends Component
             ->when($this->clientId !== null, function (Builder $query): void {
                 $query->where('client_id', $this->clientId);
             })
-            ->latest()
+            ->latest('id')
             ->limit(500)
             ->get();
 
