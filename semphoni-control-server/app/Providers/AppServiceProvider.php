@@ -58,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::define('systems.manage', fn (User $user): bool => $user->hasRole('Admin'));
         Gate::define('clients.manage', fn (User $user): bool => $user->hasRole('Admin'));
+        Gate::define('users.manage', fn (User $user): bool => $user->hasRole('Admin'));
     }
 
     protected function configureReverbClientLivenessChecker(): void

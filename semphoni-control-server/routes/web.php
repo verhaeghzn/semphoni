@@ -9,6 +9,9 @@ use App\Livewire\Logs\Index as LogsIndex;
 use App\Livewire\Systems\Create as SystemsCreate;
 use App\Livewire\Systems\Edit as SystemsEdit;
 use App\Livewire\Systems\Index as SystemsIndex;
+use App\Livewire\Users\Create as UsersCreate;
+use App\Livewire\Users\Edit as UsersEdit;
+use App\Livewire\Users\Index as UsersIndex;
 use App\Http\Controllers\ClientReverbAuthController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +42,10 @@ Route::middleware(['auth', 'verified', '2fa'])->group(function () {
     Route::livewire('commands/{command}/edit', CommandsEdit::class)->name('commands.edit');
 
     Route::livewire('logs', LogsIndex::class)->name('logs.index');
+
+    Route::livewire('users', UsersIndex::class)->middleware('can:users.manage')->name('users.index');
+    Route::livewire('users/create', UsersCreate::class)->middleware('can:users.manage')->name('users.create');
+    Route::livewire('users/{user}/edit', UsersEdit::class)->middleware('can:users.manage')->name('users.edit');
 });
 
 require __DIR__.'/settings.php';
