@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\ClientType;
 use App\Models\System;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -15,6 +16,10 @@ class Create extends Component
     use AuthorizesRequests;
 
     public int $systemId;
+
+    public ?int $clientTypeId = null;
+
+    public bool $addCommandSet = false;
 
     public string $name = '';
 
@@ -33,12 +38,20 @@ class Create extends Component
      */
     public Collection $systems;
 
+    /**
+     * @var Collection<int, ClientType>
+     */
+    public Collection $clientTypes;
+
     public function mount(): void
     {
         $this->authorize('clients.manage');
 
         $this->systems = System::query()->orderBy('name')->get();
         $this->systemId = $this->systems->first()?->id ?? 0;
+
+        $this->clientTypes = ClientType::query()->orderBy('name')->get();
+        $this->clientTypeId = $this->clientTypes->first()?->id;
 
         if ($this->systemId === 0) {
             session()->flash('status', __('Create a system before adding clients.'));
@@ -63,6 +76,8 @@ class Create extends Component
 
         $validated = $this->validate([
             'systemId' => ['required', 'integer', 'exists:systems,id'],
+            'clientTypeId' => ['nullable', 'integer', 'exists:client_types,id'],
+            'addCommandSet' => ['boolean'],
             'name' => ['required', 'string', 'max:255'],
             'apiKey' => ['required', 'string', 'max:255', 'unique:clients,api_key'],
             'widthPx' => ['required', 'integer', 'min:1'],
@@ -75,8 +90,9 @@ class Create extends Component
             'apiKey.unique' => __('This API key is already in use.'),
         ]);
 
-        Client::query()->create([
+        $client = Client::query()->create([
             'system_id' => $validated['systemId'],
+            'client_type_id' => $validated['clientTypeId'],
             'name' => $validated['name'],
             'api_key' => $validated['apiKey'],
             'width_px' => $validated['widthPx'],
@@ -84,6 +100,14 @@ class Create extends Component
             'can_screenshot' => $validated['canScreenshot'],
             'is_active' => $validated['isActive'],
         ]);
+
+        if ($validated['addCommandSet'] === true && is_int($validated['clientTypeId'])) {
+            $clientType = ClientType::query()
+                ->with('commands')
+                ->findOrFail($validated['clientTypeId']);
+
+            $client->commands()->syncWithoutDetaching($clientType->commands->modelKeys());
+        }
 
         session()->flash('status', __('Client created.'));
 

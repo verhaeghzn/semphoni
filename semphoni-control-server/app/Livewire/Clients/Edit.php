@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\Command;
 use App\Models\System;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -18,6 +19,11 @@ class Edit extends Component
     public int $clientId;
 
     public int $systemId;
+
+    /**
+     * @var array<int, int|string>
+     */
+    public array $supportedCommandIds = [];
 
     public string $name = '';
 
@@ -36,6 +42,11 @@ class Edit extends Component
      */
     public Collection $systems;
 
+    /**
+     * @var Collection<int, Command>
+     */
+    public Collection $commands;
+
     public function mount(Client $client): void
     {
         $this->authorize('clients.manage');
@@ -50,6 +61,8 @@ class Edit extends Component
         $this->isActive = $client->is_active;
 
         $this->systems = System::query()->orderBy('name')->get();
+        $this->commands = Command::query()->orderBy('name')->get();
+        $this->supportedCommandIds = $client->commands()->pluck('commands.id')->all();
     }
 
     public function generateApiKey(): void
@@ -65,6 +78,8 @@ class Edit extends Component
 
         $validated = $this->validate([
             'systemId' => ['required', 'integer', 'exists:systems,id'],
+            'supportedCommandIds' => ['array'],
+            'supportedCommandIds.*' => ['integer', 'exists:commands,id'],
             'name' => ['required', 'string', 'max:255'],
             'apiKey' => [
                 'required',
@@ -80,17 +95,19 @@ class Edit extends Component
             'apiKey.unique' => __('This API key is already in use.'),
         ]);
 
-        Client::query()
-            ->whereKey($this->clientId)
-            ->update([
-                'system_id' => $validated['systemId'],
-                'name' => $validated['name'],
-                'api_key' => $validated['apiKey'],
-                'width_px' => $validated['widthPx'],
-                'height_px' => $validated['heightPx'],
-                'can_screenshot' => $validated['canScreenshot'],
-                'is_active' => $validated['isActive'],
-            ]);
+        $client = Client::query()->findOrFail($this->clientId);
+
+        $client->update([
+            'system_id' => $validated['systemId'],
+            'name' => $validated['name'],
+            'api_key' => $validated['apiKey'],
+            'width_px' => $validated['widthPx'],
+            'height_px' => $validated['heightPx'],
+            'can_screenshot' => $validated['canScreenshot'],
+            'is_active' => $validated['isActive'],
+        ]);
+
+        $client->commands()->sync($validated['supportedCommandIds'] ?? []);
 
         session()->flash('status', __('Client updated.'));
 

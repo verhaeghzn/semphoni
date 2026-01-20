@@ -19,6 +19,15 @@
             @endforeach
         </flux:select>
 
+        <flux:select wire:model="clientTypeId" :label="__('Client type')">
+            <flux:select.option :value="null">{{ __('None') }}</flux:select.option>
+            @foreach ($clientTypes as $clientType)
+                <flux:select.option :value="$clientType->id">{{ $clientType->name }}</flux:select.option>
+            @endforeach
+        </flux:select>
+
+        <flux:checkbox wire:model="addCommandSet" :label="__('Add default command set for this client type')" />
+
         <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus />
 
         <div class="grid gap-4 sm:grid-cols-2">

@@ -21,6 +21,46 @@
 
         <flux:input wire:model="name" :label="__('Name')" type="text" required />
 
+        <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        {{ __('Supported commands') }}
+                    </div>
+                    <div class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                        {{ __('Select the commands this client supports.') }}
+                    </div>
+                </div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                    {{ __('Selected:') }} {{ count($supportedCommandIds) }}
+                </div>
+            </div>
+
+            <div class="mt-4 grid gap-3">
+                @foreach ($commands as $command)
+                    <label class="flex items-start gap-3">
+                        <input
+                            type="checkbox"
+                            class="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-100"
+                            wire:model="supportedCommandIds"
+                            value="{{ $command->id }}"
+                        />
+
+                        <div class="grid gap-0.5">
+                            <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                {{ $command->name }}
+                            </div>
+                            @if ($command->description)
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">
+                                    {{ $command->description }}
+                                </div>
+                            @endif
+                        </div>
+                    </label>
+                @endforeach
+            </div>
+        </div>
+
         <div class="grid gap-4 sm:grid-cols-2">
             <flux:input wire:model="widthPx" :label="__('Width (px)')" type="number" min="1" required />
             <flux:input wire:model="heightPx" :label="__('Height (px)')" type="number" min="1" required />

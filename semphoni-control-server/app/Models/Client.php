@@ -21,6 +21,7 @@ class Client extends Model
      */
     protected $fillable = [
         'system_id',
+        'client_type_id',
         'name',
         'api_key',
         'width_px',
@@ -43,6 +44,11 @@ class Client extends Model
     public function system(): BelongsTo
     {
         return $this->belongsTo(System::class);
+    }
+
+    public function clientType(): BelongsTo
+    {
+        return $this->belongsTo(ClientType::class);
     }
 
     public function commands(): BelongsToMany
