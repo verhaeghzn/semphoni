@@ -5,6 +5,7 @@ use App\Models\Client;
 use App\Models\ClientLog;
 use App\Models\System;
 use App\Models\User;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
@@ -25,7 +26,7 @@ test('logs page groups outbound and inbound by correlation id', function () {
         'client_id' => $client->id,
         'direction' => LogDirection::Outbound,
         'command_id' => null,
-        'summary' => 'Dispatched command ('.$correlationId.')',
+        'summary' => 'Executed acquire',
         'payload' => [
             'event' => 'server-command',
             'channel' => 'presence-client.'.$client->id,
@@ -65,4 +66,3 @@ test('logs page groups outbound and inbound by correlation id', function () {
         ->assertSee('acquire')
         ->assertSee('done');
 });
-

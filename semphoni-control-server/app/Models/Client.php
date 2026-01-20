@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\ActionType;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Carbon\CarbonInterface;
-use App\Enums\ActionType;
 
 class Client extends Model
 {
@@ -27,7 +27,6 @@ class Client extends Model
         'width_px',
         'height_px',
         'can_screenshot',
-        'last_screenshot_png_base64',
         'last_screenshot_mime',
         'last_screenshot_base64',
         'last_screenshot_taken_at',

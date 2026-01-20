@@ -361,7 +361,11 @@ class Show extends Component
         $log = ClientLog::query()
             ->where('client_id', $this->clientId)
             ->where('payload->event', 'client-command-result')
-            ->where('payload->data->correlation_id', $this->lastScreenshotCorrelationId)
+            ->where(function (Builder $query): void {
+                $query
+                    ->where('payload->data->correlation_id', $this->lastScreenshotCorrelationId)
+                    ->orWhere('payload->data->correlationId', $this->lastScreenshotCorrelationId);
+            })
             ->latest()
             ->first();
 
@@ -371,24 +375,51 @@ class Show extends Component
 
         $payload = is_array($log->payload) ? $log->payload : null;
         $data = is_array($payload['data'] ?? null) ? $payload['data'] : null;
-        $resultPayload = is_array($data['payload'] ?? null) ? $data['payload'] : null;
+        $resultPayload = is_array($data['payload'] ?? null)
+            ? $data['payload']
+            : (is_array($data) ? $data : null);
 
         if (! is_array($resultPayload)) {
             return false;
         }
 
-        $mime = $resultPayload['mime'] ?? null;
-        $encoding = $resultPayload['encoding'] ?? null;
-        $imageBase64 = $resultPayload['png_base64']
-            ?? $resultPayload['webp_base64']
-            ?? $resultPayload['image_base64']
+        $mime = $resultPayload['mime']
+            ?? $resultPayload['content_type']
+            ?? $resultPayload['contentType']
             ?? null;
 
-        $allowedMimes = ['image/png', 'image/webp'];
+        $encoding = $resultPayload['encoding'] ?? null;
+        $imageBase64 = $resultPayload['jpeg_base64']
+            ?? $resultPayload['jpg_base64']
+            ?? $resultPayload['image_base64']
+            ?? $resultPayload['base64']
+            ?? null;
 
-        if (! is_string($mime) || ! in_array($mime, $allowedMimes, true) || $encoding !== 'base64' || ! is_string($imageBase64) || $imageBase64 === '') {
+        $allowedMimes = ['image/jpeg', 'image/jpg'];
+
+        if (! is_string($imageBase64) || $imageBase64 === '') {
             return false;
         }
+
+        if (! is_string($encoding) || $encoding === '') {
+            $encoding = 'base64';
+        }
+
+        $keyImpliesJpeg = isset($resultPayload['jpeg_base64']) || isset($resultPayload['jpg_base64']);
+
+        if (! is_string($mime) || $mime === '') {
+            if (! $keyImpliesJpeg) {
+                return false;
+            }
+
+            $mime = 'image/jpeg';
+        }
+
+        if (! in_array($mime, $allowedMimes, true) || $encoding !== 'base64') {
+            return false;
+        }
+
+        $mime = $mime === 'image/jpg' ? 'image/jpeg' : $mime;
 
         $this->screenshotDataUrl = 'data:'.$mime.';base64,'.$imageBase64;
         $this->setLastScreenshotTimestamp($log->created_at);
@@ -397,7 +428,6 @@ class Show extends Component
             ->where('system_id', $this->systemId)
             ->whereKey($this->clientId)
             ->update([
-                'last_screenshot_png_base64' => $mime === 'image/png' ? $imageBase64 : null,
                 'last_screenshot_mime' => $mime,
                 'last_screenshot_base64' => $imageBase64,
                 'last_screenshot_taken_at' => $log->created_at,
@@ -423,14 +453,23 @@ class Show extends Component
         $mime = $client->last_screenshot_mime;
         $imageBase64 = $client->last_screenshot_base64;
 
-        if (! is_string($mime) || $mime === '' || ! is_string($imageBase64) || $imageBase64 === '') {
-            $mime = 'image/png';
-            $imageBase64 = $client->last_screenshot_png_base64;
+        if (! is_string($imageBase64) || $imageBase64 === '') {
+            $this->screenshotDataUrl = null;
+            $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
+
+            return;
         }
 
-        $this->screenshotDataUrl = is_string($imageBase64) && $imageBase64 !== ''
-            ? 'data:'.$mime.';base64,'.$imageBase64
-            : null;
+        if (! is_string($mime) || $mime === '' || ! in_array($mime, ['image/jpeg', 'image/jpg'], true)) {
+            $this->screenshotDataUrl = null;
+            $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
+
+            return;
+        }
+
+        $mime = $mime === 'image/jpg' ? 'image/jpeg' : $mime;
+
+        $this->screenshotDataUrl = 'data:'.$mime.';base64,'.$imageBase64;
 
         $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
     }

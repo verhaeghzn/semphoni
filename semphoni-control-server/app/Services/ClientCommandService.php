@@ -46,7 +46,7 @@ class ClientCommandService
             'client_id' => $client->id,
             'direction' => LogDirection::Outbound,
             'command_id' => $command->id,
-            'summary' => 'Dispatched command ('.$correlationId.')',
+            'summary' => 'Executed '.$command->name,
             'payload' => [
                 'event' => 'server-command',
                 'channel' => 'presence-client.'.$client->id,
@@ -86,4 +86,3 @@ class ClientCommandService
         return [$command->name, $payload];
     }
 }
-

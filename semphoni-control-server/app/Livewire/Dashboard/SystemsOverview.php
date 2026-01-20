@@ -18,4 +18,3 @@ class SystemsOverview extends Component
         ]);
     }
 }
-
