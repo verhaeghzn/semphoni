@@ -28,6 +28,8 @@ class Client extends Model
         'height_px',
         'can_screenshot',
         'last_screenshot_png_base64',
+        'last_screenshot_mime',
+        'last_screenshot_base64',
         'last_screenshot_taken_at',
         'is_active',
     ];

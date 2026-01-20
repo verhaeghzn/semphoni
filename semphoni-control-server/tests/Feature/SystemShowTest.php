@@ -121,3 +121,22 @@ test('visual feed fullscreen mode can be toggled and exits when leaving command 
         ->assertSet('visualFeedFullscreen', false);
 });
 
+test('system show loads saved screenshot as webp data url when available', function () {
+    /** @var User $user */
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $system = System::factory()->create();
+
+    Client::factory()->create([
+        'system_id' => $system->id,
+        'name' => 'Client A',
+        'last_screenshot_mime' => 'image/webp',
+        'last_screenshot_base64' => 'UklGRg==',
+        'last_screenshot_taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
+    ]);
+
+    Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])
+        ->assertSet('screenshotDataUrl', 'data:image/webp;base64,UklGRg==');
+});
+

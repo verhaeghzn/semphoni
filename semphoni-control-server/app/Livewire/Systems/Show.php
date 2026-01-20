@@ -379,20 +379,27 @@ class Show extends Component
 
         $mime = $resultPayload['mime'] ?? null;
         $encoding = $resultPayload['encoding'] ?? null;
-        $pngBase64 = $resultPayload['png_base64'] ?? null;
+        $imageBase64 = $resultPayload['png_base64']
+            ?? $resultPayload['webp_base64']
+            ?? $resultPayload['image_base64']
+            ?? null;
 
-        if ($mime !== 'image/png' || $encoding !== 'base64' || ! is_string($pngBase64) || $pngBase64 === '') {
+        $allowedMimes = ['image/png', 'image/webp'];
+
+        if (! is_string($mime) || ! in_array($mime, $allowedMimes, true) || $encoding !== 'base64' || ! is_string($imageBase64) || $imageBase64 === '') {
             return false;
         }
 
-        $this->screenshotDataUrl = 'data:image/png;base64,'.$pngBase64;
+        $this->screenshotDataUrl = 'data:'.$mime.';base64,'.$imageBase64;
         $this->setLastScreenshotTimestamp($log->created_at);
 
         Client::query()
             ->where('system_id', $this->systemId)
             ->whereKey($this->clientId)
             ->update([
-                'last_screenshot_png_base64' => $pngBase64,
+                'last_screenshot_png_base64' => $mime === 'image/png' ? $imageBase64 : null,
+                'last_screenshot_mime' => $mime,
+                'last_screenshot_base64' => $imageBase64,
                 'last_screenshot_taken_at' => $log->created_at,
             ]);
 
@@ -413,10 +420,16 @@ class Show extends Component
             return;
         }
 
-        $pngBase64 = $client->last_screenshot_png_base64;
+        $mime = $client->last_screenshot_mime;
+        $imageBase64 = $client->last_screenshot_base64;
 
-        $this->screenshotDataUrl = is_string($pngBase64) && $pngBase64 !== ''
-            ? 'data:image/png;base64,'.$pngBase64
+        if (! is_string($mime) || $mime === '' || ! is_string($imageBase64) || $imageBase64 === '') {
+            $mime = 'image/png';
+            $imageBase64 = $client->last_screenshot_png_base64;
+        }
+
+        $this->screenshotDataUrl = is_string($imageBase64) && $imageBase64 !== ''
+            ? 'data:'.$mime.';base64,'.$imageBase64
             : null;
 
         $this->setLastScreenshotTimestamp($client->last_screenshot_taken_at);
