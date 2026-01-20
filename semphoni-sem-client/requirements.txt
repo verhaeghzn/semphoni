@@ -1,0 +1,6 @@
+flask
+pyautogui
+Pillow
+python-dotenv
+mss
+websockets

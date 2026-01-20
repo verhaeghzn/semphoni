@@ -1,0 +1,12 @@
+{
+    "agents": [
+        "cursor"
+    ],
+    "editors": [
+        "cursor",
+        "vscode"
+    ],
+    "guidelines": [
+        "laravel/fortify"
+    ]
+}

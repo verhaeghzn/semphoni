@@ -1,0 +1,26 @@
+meta {
+  name: Go to Button
+  type: http
+  seq: 2
+}
+
+post {
+  url: 127.0.0.1:5005/gotoButton
+  body: json
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+body:json {
+  {
+    button_name: "stage_control_stop"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
