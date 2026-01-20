@@ -1,5 +1,7 @@
 ## Semphoni
 
+![SEMPHoni logo](semphoni-control-server/public/images/logo.png)
+
 Semphoni is a two-part system for managing and automating SEM (scanning electron microscope) workflows. It combines a Laravel-based control server with a Python-based SEM client to manage **systems**, **clients**, **commands**, and **logs**, with optional realtime control over WebSockets.
 
 ### Repository structure
