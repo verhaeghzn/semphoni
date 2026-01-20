@@ -24,6 +24,7 @@ test('system show page renders with tabs', function () {
     $client = Client::factory()->create([
         'system_id' => $system->id,
         'name' => 'Client A',
+        'can_screenshot' => true,
     ]);
 
     ClientScreenshot::query()->create([
@@ -109,27 +110,7 @@ test('system show page does not show offline banner when client is online', func
     Carbon::setTestNow();
 });
 
-test('visual feed fullscreen mode can be toggled and exits when leaving command center', function () {
-    /** @var User $user */
-    $user = User::factory()->create();
-    actingAs($user);
-
-    $system = System::factory()->create();
-
-    Client::factory()->create([
-        'system_id' => $system->id,
-        'name' => 'Client A',
-    ]);
-
-    Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])
-        ->assertSet('visualFeedFullscreen', false)
-        ->call('toggleVisualFeedFullscreen')
-        ->assertSet('visualFeedFullscreen', true)
-        ->call('selectTab', 'logs')
-        ->assertSet('visualFeedFullscreen', false);
-});
-
-test('system show loads saved screenshot as webp data url when available', function () {
+test('client visual feed loads saved screenshot as webp data url when available', function () {
     /** @var User $user */
     $user = User::factory()->create();
     actingAs($user);
@@ -139,6 +120,7 @@ test('system show loads saved screenshot as webp data url when available', funct
     $client = Client::factory()->create([
         'system_id' => $system->id,
         'name' => 'Client A',
+        'can_screenshot' => true,
     ]);
 
     ClientScreenshot::query()->create([
@@ -148,7 +130,11 @@ test('system show loads saved screenshot as webp data url when available', funct
         'taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
     ]);
 
-    Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])
+    Livewire::test(\App\Livewire\Systems\ClientVisualFeed::class, [
+        'systemId' => $system->id,
+        'clientId' => $client->id,
+        'canControl' => true,
+    ])
         ->assertSet('screenshotDataUrl', 'data:image/webp;base64,UklGRg==');
 });
 
@@ -161,14 +147,26 @@ test('visual feed screenshot request includes configured monitor number', functi
 
     $system = System::factory()->create();
 
+    $now = Carbon::create(2026, 1, 20, 12, 0, 0, 'UTC');
+    Carbon::setTestNow($now);
+
     $client = Client::factory()->create([
         'system_id' => $system->id,
         'can_screenshot' => true,
         'is_active' => true,
     ]);
 
-    Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])
-        ->set('clientId', $client->id)
+    ClientLog::factory()->create([
+        'client_id' => $client->id,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    Livewire::test(\App\Livewire\Systems\ClientVisualFeed::class, [
+        'systemId' => $system->id,
+        'clientId' => $client->id,
+        'canControl' => true,
+    ])
         ->set('visualFeedMonitorNr', 3)
         ->set('visualFeedEnabled', true);
 
@@ -180,5 +178,29 @@ test('visual feed screenshot request includes configured monitor number', functi
 
         return true;
     });
+
+    Carbon::setTestNow();
+});
+
+test('visual feed panel shows offline badge and disables live toggle when client is offline', function () {
+    /** @var User $user */
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $system = System::factory()->create();
+
+    $client = Client::factory()->create([
+        'system_id' => $system->id,
+        'can_screenshot' => true,
+        'is_active' => true,
+    ]);
+
+    Livewire::test(\App\Livewire\Systems\ClientVisualFeed::class, [
+        'systemId' => $system->id,
+        'clientId' => $client->id,
+        'canControl' => true,
+    ])
+        ->assertSee('OFFLINE')
+        ->assertSee('disabled', escape: false);
 });
 

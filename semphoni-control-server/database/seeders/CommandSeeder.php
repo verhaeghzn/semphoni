@@ -57,5 +57,13 @@ class CommandSeeder extends Seeder
                 'description' => 'Fetch a screenshot from the client.',
             ],
         );
+
+        Command::query()->updateOrCreate(
+            ['name' => 'get_metrics'],
+            [
+                'action_type' => ActionType::Request,
+                'description' => 'Fetch current metrics from the client.',
+            ],
+        );
     }
 }

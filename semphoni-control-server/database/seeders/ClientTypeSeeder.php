@@ -35,6 +35,7 @@ class ClientTypeSeeder extends Seeder
             'continual_mode',
             'single_mode',
             'stage_control_stop',
+            'get_metrics',
         ];
 
         $commandIdsByName = Command::query()
