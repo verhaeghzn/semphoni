@@ -29,8 +29,12 @@ test('system show page renders with tabs', function () {
 
     ClientScreenshot::query()->create([
         'client_id' => $client->id,
-        'mime' => 'image/png',
-        'base64' => 'iVBORw0KGgo=',
+        'monitor_nr' => 1,
+        'mime' => 'image/jpeg',
+        'storage_disk' => 'local',
+        'storage_path' => 'client-screenshots/'.$client->id.'/monitor-1/latest.jpg',
+        'bytes' => 1234,
+        'sha256' => str_repeat('a', 64),
         'taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
     ]);
 
@@ -125,8 +129,12 @@ test('client visual feed loads saved screenshot as webp data url when available'
 
     ClientScreenshot::query()->create([
         'client_id' => $client->id,
-        'mime' => 'image/webp',
-        'base64' => 'UklGRg==',
+        'monitor_nr' => 1,
+        'mime' => 'image/jpeg',
+        'storage_disk' => 'local',
+        'storage_path' => 'client-screenshots/'.$client->id.'/monitor-1/latest.jpg',
+        'bytes' => 1234,
+        'sha256' => str_repeat('a', 64),
         'taken_at' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC'),
     ]);
 
@@ -135,7 +143,15 @@ test('client visual feed loads saved screenshot as webp data url when available'
         'clientId' => $client->id,
         'canControl' => true,
     ])
-        ->assertSet('screenshotDataUrl', 'data:image/webp;base64,UklGRg==');
+        ->assertSet(
+            'screenshotDataUrl',
+            route('systems.clients.visual-feed.latest', [
+                'system' => $system->id,
+                'client' => $client->id,
+                'monitorNr' => 1,
+                'v' => Carbon::create(2026, 1, 19, 12, 34, 56, 'UTC')->timestamp,
+            ], absolute: false)
+        );
 });
 
 test('visual feed screenshot request includes configured monitor number', function () {

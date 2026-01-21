@@ -84,6 +84,7 @@ class ClientVisualFeed extends Component
     {
         $this->visualFeedMonitorNr = max(1, min($this->visualFeedMonitorMax, (int) $monitorNr));
         $this->persistVisualFeedSettings();
+        $this->loadSavedScreenshot();
     }
 
     public function decrementVisualFeedInterval(): void
@@ -160,7 +161,7 @@ class ClientVisualFeed extends Component
     {
         return Client::query()
             ->where('system_id', $this->systemId)
-            ->with(['latestLog', 'screenshot'])
+            ->with(['latestLog'])
             ->find($this->clientId);
     }
 
@@ -265,105 +266,37 @@ class ClientVisualFeed extends Component
         if (! $log instanceof ClientLog) {
             return false;
         }
-
-        $payload = is_array($log->payload) ? $log->payload : null;
-        $data = is_array($payload['data'] ?? null) ? $payload['data'] : null;
-        $resultPayload = is_array($data['payload'] ?? null)
-            ? $data['payload']
-            : (is_array($data) ? $data : null);
-
-        if (! is_array($resultPayload)) {
-            return false;
-        }
-
-        $mime = $resultPayload['mime']
-            ?? $resultPayload['content_type']
-            ?? $resultPayload['contentType']
-            ?? null;
-
-        $encoding = $resultPayload['encoding'] ?? null;
-        $imageBase64 = $resultPayload['jpeg_base64']
-            ?? $resultPayload['jpg_base64']
-            ?? $resultPayload['image_base64']
-            ?? $resultPayload['base64']
-            ?? null;
-
-        $allowedMimes = ['image/jpeg', 'image/jpg'];
-
-        if (! is_string($imageBase64) || $imageBase64 === '') {
-            return false;
-        }
-
-        if (! is_string($encoding) || $encoding === '') {
-            $encoding = 'base64';
-        }
-
-        $keyImpliesJpeg = isset($resultPayload['jpeg_base64']) || isset($resultPayload['jpg_base64']);
-
-        if (! is_string($mime) || $mime === '') {
-            if (! $keyImpliesJpeg) {
-                return false;
-            }
-
-            $mime = 'image/jpeg';
-        }
-
-        if (! in_array($mime, $allowedMimes, true) || $encoding !== 'base64') {
-            return false;
-        }
-
-        $mime = $mime === 'image/jpg' ? 'image/jpeg' : $mime;
-
-        $this->screenshotDataUrl = 'data:'.$mime.';base64,'.$imageBase64;
-        $this->setLastScreenshotTimestamp($log->created_at);
-
-        ClientScreenshot::query()->updateOrCreate(
-            ['client_id' => $this->clientId],
-            [
-                'mime' => $mime,
-                'base64' => $imageBase64,
-                'taken_at' => $log->created_at,
-            ],
-        );
+        $this->loadSavedScreenshot();
 
         return true;
     }
 
     private function loadSavedScreenshot(): void
     {
-        $client = $this->client();
+        $screenshot = ClientScreenshot::query()
+            ->where('client_id', $this->clientId)
+            ->where('monitor_nr', $this->visualFeedMonitorNr)
+            ->first();
 
-        if (! $client instanceof Client) {
-            return;
-        }
+        $takenAt = $screenshot?->taken_at;
+        $this->setLastScreenshotTimestamp($takenAt);
 
-        $screenshot = $client->screenshot;
-        $mime = $screenshot?->mime;
-        $imageBase64 = $screenshot?->base64;
+        $storagePath = $screenshot?->storage_path;
 
-        if (! is_string($imageBase64) || $imageBase64 === '') {
+        if (! is_string($storagePath) || $storagePath === '') {
             $this->screenshotDataUrl = null;
-            $this->setLastScreenshotTimestamp($screenshot?->taken_at);
 
             return;
         }
 
-        if (
-            ! is_string($mime)
-            || $mime === ''
-            || ! in_array($mime, ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'], true)
-        ) {
-            $this->screenshotDataUrl = null;
-            $this->setLastScreenshotTimestamp($screenshot?->taken_at);
+        $v = $takenAt instanceof CarbonInterface ? $takenAt->timestamp : time();
 
-            return;
-        }
-
-        $mime = $mime === 'image/jpg' ? 'image/jpeg' : $mime;
-
-        $this->screenshotDataUrl = 'data:'.$mime.';base64,'.$imageBase64;
-
-        $this->setLastScreenshotTimestamp($screenshot?->taken_at);
+        $this->screenshotDataUrl = route('systems.clients.visual-feed.latest', [
+            'system' => $this->systemId,
+            'client' => $this->clientId,
+            'monitorNr' => $this->visualFeedMonitorNr,
+            'v' => $v,
+        ], absolute: false);
     }
 
     private function setLastScreenshotTimestamp(?CarbonInterface $takenAt): void

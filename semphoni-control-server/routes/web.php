@@ -13,6 +13,9 @@ use App\Livewire\Users\Create as UsersCreate;
 use App\Livewire\Users\Edit as UsersEdit;
 use App\Livewire\Users\Index as UsersIndex;
 use App\Http\Controllers\ClientReverbAuthController;
+use App\Http\Controllers\ClientScreenshotStoreController;
+use App\Http\Controllers\ClientLatestScreenshotController;
+use App\Http\Controllers\ClientMetaController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
@@ -28,11 +31,22 @@ Route::post('client/broadcasting/auth', ClientReverbAuthController::class)
     ->withoutMiddleware([VerifyCsrfToken::class])
     ->name('client.broadcasting.auth');
 
+Route::get('client/meta', ClientMetaController::class)
+    ->name('client.meta');
+
+Route::post('client/screenshots', ClientScreenshotStoreController::class)
+    ->withoutMiddleware([VerifyCsrfToken::class])
+    ->name('client.screenshots.store');
+
 Route::middleware(['auth', 'verified', '2fa'])->group(function () {
     Route::livewire('systems', SystemsIndex::class)->name('systems.index');
     Route::livewire('systems/create', SystemsCreate::class)->middleware('can:systems.manage')->name('systems.create');
     Route::livewire('systems/{system}', \App\Livewire\Systems\Show::class)->name('systems.show');
     Route::livewire('systems/{system}/edit', SystemsEdit::class)->middleware('can:systems.manage')->name('systems.edit');
+
+    Route::get('systems/{system}/clients/{client}/visual-feed/monitor/{monitorNr}', ClientLatestScreenshotController::class)
+        ->whereNumber('monitorNr')
+        ->name('systems.clients.visual-feed.latest');
 
     Route::livewire('clients', ClientsIndex::class)->name('clients.index');
     Route::livewire('clients/create', ClientsCreate::class)->middleware('can:clients.manage')->name('clients.create');

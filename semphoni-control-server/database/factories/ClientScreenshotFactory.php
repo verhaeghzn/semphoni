@@ -17,7 +17,13 @@ class ClientScreenshotFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'monitor_nr' => 1,
+            'mime' => 'image/jpeg',
+            'storage_disk' => 'local',
+            'storage_path' => 'client-screenshots/1/monitor-1/latest.jpg',
+            'bytes' => 1234,
+            'sha256' => str_repeat('a', 64),
+            'taken_at' => now(),
         ];
     }
 }

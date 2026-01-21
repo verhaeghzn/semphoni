@@ -16,14 +16,20 @@ class ClientScreenshot extends Model
      */
     protected $fillable = [
         'client_id',
+        'monitor_nr',
         'mime',
-        'base64',
+        'storage_disk',
+        'storage_path',
+        'bytes',
+        'sha256',
         'taken_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'monitor_nr' => 'int',
+            'bytes' => 'int',
             'taken_at' => 'datetime',
         ];
     }

@@ -15,7 +15,6 @@ Credentials are intended to be provided through environment variables.
 from __future__ import annotations
 
 import asyncio
-import base64
 import contextlib
 import io
 import json
@@ -29,6 +28,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 from urllib.parse import urlparse, urlunparse
+from uuid import uuid4
 
 import mss
 import pyautogui
@@ -36,6 +36,7 @@ from PIL import Image
 
 from .utils import ButtonValidationError, validate_button
 from .sem_metrics import check_sem_mode_at_startup, get_metrics as get_sem_metrics
+from .version import CLIENT_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,8 @@ DEFAULT_PROTOCOL_QUERY = "protocol=7&client=python&version=0.1&flash=false"
 class ReverbClientConfig:
     ws_url: str
     auth_url: str
+    meta_url: str
+    screenshot_upload_url: str
     channel: str
     client_key: str
     ws_origin: str = ""
@@ -85,6 +88,8 @@ class ReverbClientConfig:
         - REVERB_APP_ID (optional): informational app id (default 915841)
         - REVERB_APP_KEY (optional): if set, build /app/<key>?<protocol query> from REVERB_WS_HOST
         - REVERB_AUTH_URL (required): HTTP auth endpoint
+        - REVERB_META_URL (optional): HTTP client meta endpoint (defaults to derived from REVERB_AUTH_URL)
+        - REVERB_SCREENSHOT_UPLOAD_URL (optional): HTTP screenshot upload endpoint (defaults to derived from REVERB_AUTH_URL)
         - REVERB_CLIENT_KEY (required): value for X-Client-Key header
         - REVERB_CHANNEL (optional): default presence-client.1
         - REVERB_HEARTBEAT_SECONDS (optional): default 10
@@ -122,6 +127,14 @@ class ReverbClientConfig:
         if not auth_url:
             raise ValueError("Missing REVERB_AUTH_URL (HTTP auth endpoint).")
 
+        meta_url = (os.getenv("REVERB_META_URL") or "").strip()
+        if not meta_url:
+            meta_url = _infer_meta_url(auth_url)
+
+        screenshot_upload_url = (os.getenv("REVERB_SCREENSHOT_UPLOAD_URL") or "").strip()
+        if not screenshot_upload_url:
+            screenshot_upload_url = _infer_screenshot_upload_url(auth_url)
+
         client_key = (os.getenv("REVERB_CLIENT_KEY") or "").strip()
         if not client_key:
             raise ValueError("Missing REVERB_CLIENT_KEY (X-Client-Key header value).")
@@ -153,6 +166,8 @@ class ReverbClientConfig:
         return ReverbClientConfig(
             ws_url=ws_url,
             auth_url=auth_url,
+            meta_url=meta_url,
+            screenshot_upload_url=screenshot_upload_url,
             channel=channel,
             client_key=client_key,
             ws_origin=ws_origin,
@@ -196,6 +211,156 @@ def _http_post_json(
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
         raise RuntimeError(f"Auth HTTP error {e.code}: {raw}") from e
+
+
+def _http_get_json(
+    url: str,
+    headers: Dict[str, str],
+    *,
+    insecure_ssl: bool = False,
+) -> Dict[str, Any]:
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        ctx = None
+        if insecure_ssl and urlparse(url).scheme == "https":
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
+        with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
+            resp_body = resp.read().decode("utf-8", errors="replace")
+            return json.loads(resp_body) if resp_body else {}
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
+        raise RuntimeError(f"Meta HTTP error {e.code}: {raw}") from e
+
+
+def _http_post_multipart(
+    url: str,
+    headers: Dict[str, str],
+    *,
+    fields: Dict[str, str],
+    files: Dict[str, Tuple[str, bytes, str]],
+    insecure_ssl: bool = False,
+) -> Dict[str, Any]:
+    boundary = "----semphoni-" + uuid4().hex
+
+    body = bytearray()
+    crlf = b"\r\n"
+
+    def write_line(line: bytes) -> None:
+        body.extend(line)
+        body.extend(crlf)
+
+    for name, value in fields.items():
+        write_line(f"--{boundary}".encode("utf-8"))
+        write_line(f'Content-Disposition: form-data; name="{name}"'.encode("utf-8"))
+        write_line(b"")
+        write_line(value.encode("utf-8"))
+
+    for name, (filename, content, content_type) in files.items():
+        write_line(f"--{boundary}".encode("utf-8"))
+        write_line(
+            f'Content-Disposition: form-data; name="{name}"; filename="{filename}"'.encode("utf-8")
+        )
+        write_line(f"Content-Type: {content_type}".encode("utf-8"))
+        write_line(b"")
+        body.extend(content)
+        body.extend(crlf)
+
+    write_line(f"--{boundary}--".encode("utf-8"))
+
+    req = urllib.request.Request(
+        url,
+        data=bytes(body),
+        headers={
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            **headers,
+        },
+        method="POST",
+    )
+    try:
+        ctx = None
+        if insecure_ssl and urlparse(url).scheme == "https":
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
+        with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
+            resp_body = resp.read().decode("utf-8", errors="replace")
+            return json.loads(resp_body) if resp_body else {}
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
+        raise RuntimeError(f"Upload HTTP error {e.code}: {raw}") from e
+
+
+def _infer_meta_url(auth_url: str) -> str:
+    """
+    Infer the Laravel meta endpoint from the known auth endpoint.
+
+    Example:
+      /client/broadcasting/auth  ->  /client/meta
+    """
+    p = urlparse(auth_url)
+    if not p.scheme or not p.netloc:
+        return auth_url
+
+    path = p.path or ""
+    if path.endswith("/client/broadcasting/auth"):
+        path = path[: -len("/client/broadcasting/auth")] + "/client/meta"
+    else:
+        path = "/client/meta"
+
+    return urlunparse((p.scheme, p.netloc, path, "", "", ""))
+
+
+def _infer_screenshot_upload_url(auth_url: str) -> str:
+    """
+    Infer the Laravel screenshot upload endpoint from the known auth endpoint.
+
+    Example:
+      /client/broadcasting/auth  ->  /client/screenshots
+    """
+    p = urlparse(auth_url)
+    if not p.scheme or not p.netloc:
+        return auth_url
+
+    path = p.path or ""
+    if path.endswith("/client/broadcasting/auth"):
+        path = path[: -len("/client/broadcasting/auth")] + "/client/screenshots"
+    else:
+        path = "/client/screenshots"
+
+    return urlunparse((p.scheme, p.netloc, path, "", "", ""))
+
+
+def warn_if_client_version_mismatch(cfg: ReverbClientConfig) -> None:
+    """
+    Best-effort version check against the server-declared expected client version.
+    Never raises; logs a warning if mismatched or if the check fails.
+    """
+    try:
+        meta = _http_get_json(
+            cfg.meta_url,
+            headers={"X-Client-Key": cfg.client_key},
+            insecure_ssl=cfg.insecure_ssl,
+        )
+        expected = str(meta.get("py_client_version", "")).strip()
+        if not expected:
+            logger.warning(
+                "Could not determine expected client version from server (missing py_client_version). "
+                "meta_url=%s",
+                cfg.meta_url,
+            )
+            return
+        if expected != CLIENT_VERSION:
+            logger.warning(
+                "Client version mismatch: server expects %s but this client is %s. Please update the SEMPhoni client.",
+                expected,
+                CLIENT_VERSION,
+            )
+    except Exception as e:
+        logger.warning("Client version check failed (%s). Continuing anyway.", e)
 
 
 def _is_ddev_hostname(hostname: Optional[str]) -> bool:
@@ -282,7 +447,7 @@ def _parse_pusher_data_field(data: Any) -> Any:
 
 
 def _execute_command(
-    command_name: str, payload: Dict[str, Any]
+    command_name: str, payload: Dict[str, Any], cfg: ReverbClientConfig
 ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Minimal command execution layer (no Flask).
@@ -330,7 +495,24 @@ def _execute_command(
                 img_bytes = buf.getvalue()
                 mime = "image/jpeg"
 
-            b64 = base64.b64encode(img_bytes).decode("ascii")
+            upload_resp: Optional[Dict[str, Any]] = None
+            last_upload_err: Optional[Exception] = None
+            for upload_url in _ddev_auth_url_candidates(cfg.screenshot_upload_url):
+                try:
+                    upload_resp = _http_post_multipart(
+                        upload_url,
+                        headers={"X-Client-Key": cfg.client_key},
+                        fields={"monitor_nr": str(monitor_nr)},
+                        files={"image": ("latest.jpg", img_bytes, "image/jpeg")},
+                        insecure_ssl=cfg.insecure_ssl,
+                    )
+                    break
+                except Exception as e:
+                    last_upload_err = e
+                    continue
+
+            if upload_resp is None:
+                raise RuntimeError(f"Screenshot upload failed using {cfg.screenshot_upload_url}") from last_upload_err
             t1 = time.time()
             _json_log(
                 "screenshot_done",
@@ -345,9 +527,8 @@ def _execute_command(
                 total_ms=round((t1 - t0) * 1000.0, 2),
             )
             return True, "ok", {
+                "artifact_id": upload_resp.get("id"),
                 "mime": mime,
-                "encoding": "base64",
-                "jpeg_base64": b64,
                 "format": "jpeg",
                 "quality": quality,
                 "bytes": len(img_bytes),
@@ -569,7 +750,7 @@ async def _cloud_message_loop(ws, cfg: ReverbClientConfig, relay_gateway: Option
         if not isinstance(payload, dict):
             payload = {}
 
-        ok, message, result_payload = _execute_command(command_name, payload)
+        ok, message, result_payload = _execute_command(command_name, payload, cfg)
         result_data: Dict[str, Any] = {
             "correlation_id": correlation_id,
             "command_name": command_name,
@@ -848,6 +1029,7 @@ def run_reverb_client_forever() -> None:
             # Check SEM mode connectivity at startup
             check_sem_mode_at_startup()
             cfg = ReverbClientConfig.from_env()
+            warn_if_client_version_mismatch(cfg)
             asyncio.run(_run_reverb_client_with_local_relay(cfg))
             # If the asyncio run returns normally, reset delay and continue (should be rare;
             # the inner WS loop is intended to run forever).

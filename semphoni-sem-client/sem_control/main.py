@@ -16,7 +16,7 @@ from typing import Sequence
 
 from dotenv import load_dotenv
 
-from .reverb_client import run_reverb_client_forever
+from .reverb_client import ReverbClientConfig, run_reverb_client_forever, warn_if_client_version_mismatch
 
 load_dotenv()
 
@@ -77,10 +77,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.rest:
+        # Best-effort version check (only if cloud config is present).
+        try:
+            warn_if_client_version_mismatch(ReverbClientConfig.from_env())
+        except Exception:
+            pass
+
         from .rest_main import run_rest_server
 
         run_rest_server()
         return 0
+
+    # Best-effort version check before connecting to cloud Reverb.
+    try:
+        warn_if_client_version_mismatch(ReverbClientConfig.from_env())
+    except Exception:
+        pass
 
     run_reverb_client_forever()
     return 0
