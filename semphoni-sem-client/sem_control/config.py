@@ -5,7 +5,82 @@ This module contains the button locations and properties that can be used
 for programmatic control of the SEM interface via GUI automation.
 """
 
-BUTTONS_CONFIG = {
+from __future__ import annotations
+
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
+
+
+def get_buttons_config_override_path() -> Path:
+    """
+    Path to an optional on-disk override for BUTTONS_CONFIG.
+
+    This allows calibration to persist across code updates without editing
+    Python source files.
+
+    Override with env var `SEM_BUTTONS_CONFIG_PATH`.
+    """
+    raw = (os.getenv("SEM_BUTTONS_CONFIG_PATH") or "").strip()
+    if raw:
+        return Path(raw).expanduser()
+
+    # Default: <repo>/semphoni-sem-client/data/buttons_config.json
+    repo_dir = Path(__file__).resolve().parents[1]
+    return repo_dir / "data" / "buttons_config.json"
+
+
+def _is_buttons_config_shape(obj: Any) -> bool:
+    if not isinstance(obj, dict):
+        return False
+    if "image_size" not in obj or "buttons" not in obj:
+        return False
+    if not isinstance(obj.get("image_size"), dict):
+        return False
+    if not isinstance(obj.get("buttons"), dict):
+        return False
+    return True
+
+
+def load_buttons_config_override(default_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Load a BUTTONS_CONFIG override from disk if present; otherwise return default.
+    """
+    path = get_buttons_config_override_path()
+    try:
+        if not path.is_file():
+            return default_config
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not _is_buttons_config_shape(data):
+            raise ValueError("override file has unexpected shape (expected keys: image_size, buttons)")
+        logger.info("Loaded BUTTONS_CONFIG override from %s", str(path))
+        return data
+    except Exception as e:
+        logger.warning("Failed to load BUTTONS_CONFIG override from %s: %s", str(path), e)
+        return default_config
+
+
+def save_buttons_config_override(config: Dict[str, Any]) -> Path:
+    """
+    Persist a BUTTONS_CONFIG dict to the override path as JSON (atomic write).
+    """
+    path = get_buttons_config_override_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, sort_keys=True)
+        f.write("\n")
+    tmp.replace(path)
+    logger.info("Saved BUTTONS_CONFIG override to %s", str(path))
+    return path
+
+
+DEFAULT_BUTTONS_CONFIG: Dict[str, Any] = {
     "image_size": {"width": 1920, "height": 1080},
     "buttons": {
         "beam_on_off_toggle": {
@@ -18,6 +93,7 @@ BUTTONS_CONFIG = {
             "bbox": {"x1": 3640, "y1": 1047, "x2": 3735, "y2": 1075},
             "center": {"x": 3688, "y": 1061},
             "notes": "Vacuum panel bottom row, grey 'VENT' button.",
+            "requires_confirmation": True
         },
         "vacuum_pump": {
             "bbox": {"x1": 3677, "y1": 1050, "x2": 3896, "y2": 1078},
@@ -82,11 +158,13 @@ BUTTONS_CONFIG = {
         "stage_control_stop": {
             "bbox": {"x1": 2163, "y1": 924, "x2": 2238, "y2": 946},
             "center": {"x": 2201, "y": 935},
-            "notes": "Stage Control panel bottom-left, 'Stop' button.",
-            "requires_confirmation": True
+            "notes": "Stage Control panel bottom-left, 'Stop' button."
         },
     },
 }
+
+# Load a persisted calibration if present.
+BUTTONS_CONFIG = load_buttons_config_override(DEFAULT_BUTTONS_CONFIG)
 
 # Convenience accessors
 BUTTONS = BUTTONS_CONFIG["buttons"]

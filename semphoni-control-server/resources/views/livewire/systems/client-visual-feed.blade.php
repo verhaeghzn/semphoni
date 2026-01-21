@@ -1,4 +1,31 @@
-<div>
+<div
+    x-data="{
+        clientId: {{ (int) $clientId }},
+        systemId: {{ (int) $systemId }},
+        enabled: @entangle('visualFeedEnabled').live,
+        interval: @entangle('visualFeedIntervalSeconds').live,
+        monitor: @entangle('visualFeedMonitorNr').live,
+        offline: @entangle('clientIsOffline').live,
+        canControl: @entangle('canControl').live,
+        init() {
+            const prefix = () => `[VisualFeed s:${this.systemId} c:${this.clientId}]`;
+
+            console.debug(prefix(), 'init', {
+                enabled: this.enabled,
+                interval: this.interval,
+                monitor: this.monitor,
+                offline: this.offline,
+                canControl: this.canControl,
+            });
+
+            this.$watch('enabled', (v) => console.debug(prefix(), 'enabled ->', v));
+            this.$watch('interval', (v) => console.debug(prefix(), 'interval ->', v));
+            this.$watch('monitor', (v) => console.debug(prefix(), 'monitor ->', v));
+            this.$watch('offline', (v) => console.debug(prefix(), 'offline ->', v));
+            this.$watch('canControl', (v) => console.debug(prefix(), 'canControl ->', v));
+        },
+    }"
+>
     <div
         class="rounded-xl border border-neutral-200 bg-white p-4 space-y-3 dark:border-neutral-800 dark:bg-neutral-950"
         @if ($visualFeedEnabled)

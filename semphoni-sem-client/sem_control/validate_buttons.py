@@ -18,6 +18,7 @@ Calibration mode:
 import pyautogui
 import copy
 from .config import BUTTONS, BUTTONS_CONFIG, IMAGE_SIZE
+from .config import save_buttons_config_override, get_buttons_config_override_path
 
 
 def display_button_list():
@@ -298,6 +299,15 @@ def calibration_mode():
     print(format_config_dict(calibrated_config))
     print()
     print("=" * 70)
+    print()
+
+    # Persist calibration so it survives code updates.
+    try:
+        saved_path = save_buttons_config_override(calibrated_config)
+        print(f"Saved calibrated BUTTONS_CONFIG to: {saved_path}")
+        print("This file will be loaded automatically on server start.")
+    except Exception as e:
+        print(f"WARNING: Failed to save calibrated BUTTONS_CONFIG to {get_buttons_config_override_path()}: {e}")
 
 
 def main():

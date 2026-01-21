@@ -4,6 +4,7 @@ Mouse and keyboard control API routes.
 from flask import Blueprint, request, jsonify
 import pyautogui
 from ..auth import require_password
+from ..sem_metrics import get_metrics as get_sem_metrics
 
 bp = Blueprint("control", __name__)
 
@@ -38,4 +39,17 @@ def key_press():
     key = data["key"]  # e.g. "enter"
     pyautogui.press(key)
     return jsonify({"status": "ok"})
+
+
+@bp.route("/metrics", methods=["GET"])
+@require_password
+def metrics():
+    """
+    Return key SEM metrics (when SEM_MODE supports it).
+
+    This mirrors the Reverb "get_metrics" server-command.
+    """
+    m = get_sem_metrics()
+    status = 200 if m.get("supported", False) else 503
+    return jsonify(m), status
 

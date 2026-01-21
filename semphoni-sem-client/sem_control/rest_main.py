@@ -16,6 +16,7 @@ from flask import Flask, jsonify, request
 from .routes.button_routes import bp as button_bp
 from .routes.control_routes import bp as control_bp
 from .routes.screenshot_routes import bp as screenshot_bp
+from .sem_metrics import check_sem_mode_at_startup
 
 load_dotenv()
 
@@ -93,6 +94,8 @@ def run_rest_server(host: str = "127.0.0.1", port: int = 5005) -> None:
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
+    # Check SEM mode connectivity at startup
+    check_sem_mode_at_startup()
     app = create_app()
     app.run(host=host, port=port)
 

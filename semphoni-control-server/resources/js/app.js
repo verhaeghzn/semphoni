@@ -5,3 +5,16 @@
  */
 
 import './echo';
+
+document.addEventListener('livewire:init', () => {
+    window.addEventListener('visual-feed-log', (event) => {
+        const detail = event?.detail ?? {};
+        const clientId = detail.clientId ?? '?';
+        const systemId = detail.systemId ?? '?';
+        const message = detail.message ?? '';
+        const context = detail.context ?? {};
+
+        // Keep logs easy to scan while debugging.
+        console.debug(`[VisualFeed s:${systemId} c:${clientId}] ${message}`, context);
+    });
+});

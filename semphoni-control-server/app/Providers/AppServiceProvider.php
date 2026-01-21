@@ -80,7 +80,7 @@ class AppServiceProvider extends ServiceProvider
                 ->get();
 
             foreach ($clients as $client) {
-                $isAlive = $client->isActive(20);
+                $isAlive = $client->isActive();
                 $cacheKey = 'clients:liveness:'.$client->id;
 
                 $previous = Cache::get($cacheKey);

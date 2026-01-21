@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
+import io
 import json
 import logging
 import os
@@ -30,10 +31,11 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 from urllib.parse import urlparse, urlunparse
 
 import mss
-import mss.tools
 import pyautogui
+from PIL import Image
 
 from .utils import ButtonValidationError, validate_button
+from .sem_metrics import check_sem_mode_at_startup, get_metrics as get_sem_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +50,11 @@ def _json_log(event: str, **fields: Any) -> None:
         logger.info("event=%s fields=%r", event, fields)
 
 
-DEFAULT_WS_HOST = "semphoni-wss.eu.ngrok.io"
-DEFAULT_APP_KEY = "unnz4mz0qddaghivqq2c"
+DEFAULT_WS_HOST = "ws.semphoni.multiscale.nl"
+DEFAULT_APP_ID = "626126"
+DEFAULT_APP_KEY = "mtnrfqng7jaloh9uq1gi"
+# Default query matches the original python client behavior.
+# If needed, override via REVERB_WS_PROTOCOL_QUERY or REVERB_WS_URL.
 DEFAULT_PROTOCOL_QUERY = "protocol=7&client=python&version=0.1&flash=false"
 
 
@@ -59,6 +64,9 @@ class ReverbClientConfig:
     auth_url: str
     channel: str
     client_key: str
+    ws_origin: str = ""
+    ws_user_agent: str = ""
+    app_id: str = DEFAULT_APP_ID
     heartbeat_seconds: int = 10
     reconnect_delay_seconds: int = 60
     version: str = "dev"
@@ -73,7 +81,8 @@ class ReverbClientConfig:
         """
         Environment variables:
         - REVERB_WS_URL (optional): full WebSocket URL
-        - REVERB_WS_HOST (optional): host or base WebSocket URL (default semphoni-control-server.eu.ngrok.io)
+        - REVERB_WS_HOST (optional): host or base WebSocket URL (default ws.semphoni.multiscale.nl)
+        - REVERB_APP_ID (optional): informational app id (default 915841)
         - REVERB_APP_KEY (optional): if set, build /app/<key>?<protocol query> from REVERB_WS_HOST
         - REVERB_AUTH_URL (required): HTTP auth endpoint
         - REVERB_CLIENT_KEY (required): value for X-Client-Key header
@@ -104,7 +113,10 @@ class ReverbClientConfig:
             else:
                 # Default to the known app key so the default host works out of the box.
                 app_key = (os.getenv("REVERB_APP_KEY") or DEFAULT_APP_KEY).strip()
-                ws_url = f"{base.rstrip('/')}/app/{app_key}?{DEFAULT_PROTOCOL_QUERY}"
+                protocol_query = (os.getenv("REVERB_WS_PROTOCOL_QUERY") or DEFAULT_PROTOCOL_QUERY).strip()
+                ws_url = f"{base.rstrip('/')}/app/{app_key}?{protocol_query}"
+
+        app_id = (os.getenv("REVERB_APP_ID") or DEFAULT_APP_ID).strip()
 
         auth_url = (os.getenv("REVERB_AUTH_URL") or "").strip()
         if not auth_url:
@@ -125,11 +137,27 @@ class ReverbClientConfig:
         relay_outbox_max_total = int(os.getenv("RELAY_OUTBOX_MAX_TOTAL", "1000"))
         relay_outbox_max_per_client = int(os.getenv("RELAY_OUTBOX_MAX_PER_CLIENT", "100"))
 
+        # Some Pusher/Reverb frontends (and some edge/WAF setups) require an Origin header
+        # matching the browser UI host. Allow forcing it; otherwise infer for semphoni.
+        ws_origin = (os.getenv("REVERB_WS_ORIGIN") or "").strip()
+        if not ws_origin:
+            try:
+                p_ws = urlparse(ws_url)
+                if p_ws.hostname and p_ws.hostname.endswith("semphoni.multiscale.nl"):
+                    ws_origin = "https://semphoni.multiscale.nl"
+            except Exception:
+                ws_origin = ""
+
+        ws_user_agent = (os.getenv("REVERB_WS_USER_AGENT") or "").strip()
+
         return ReverbClientConfig(
             ws_url=ws_url,
             auth_url=auth_url,
             channel=channel,
             client_key=client_key,
+            ws_origin=ws_origin,
+            ws_user_agent=ws_user_agent,
+            app_id=app_id,
             heartbeat_seconds=heartbeat_seconds,
             reconnect_delay_seconds=reconnect_delay_seconds,
             version=version,
@@ -261,19 +289,68 @@ def _execute_command(
     Expand this mapping as the server begins sending more commands.
     """
     try:
+        if command_name in ("get_metrics", "getMetrics", "get-metrics"):
+            metrics = get_sem_metrics()
+            if not metrics.get("supported", False):
+                return False, str(metrics.get("message") or "metrics_not_supported"), metrics
+            return True, "ok", metrics
+
         if command_name in ("screenshot", "getScreenshot", "get_screenshot"):
             # Match admin_control.py behavior (mss + SEMPC_MONITOR_NUMBER).
             monitor_nr = int(payload.get("monitor_nr") or os.getenv("SEMPC_MONITOR_NUMBER", 2))
+            t0 = time.time()
+            # Optional knobs:
+            # - payload.quality / SCREENSHOT_JPEG_QUALITY (1-100)
+            # - payload.format must be jpeg if provided (for forward-compat)
+            fmt = str(payload.get("format") or "jpeg").strip().lower()
+            if fmt not in {"jpeg", "jpg", "image/jpeg"}:
+                return False, "Only JPEG screenshots are supported", None
+
+            quality = int(payload.get("quality") or os.getenv("SCREENSHOT_JPEG_QUALITY", "75"))
+            quality = max(1, min(100, quality))
+
+            _json_log(
+                "screenshot_start",
+                monitor_nr=monitor_nr,
+                format="jpeg",
+                quality=quality,
+            )
+
             with mss.mss() as sct:
                 monitor = sct.monitors[monitor_nr]
+                t_grab0 = time.time()
                 sct_img = sct.grab(monitor)
-                png_bytes = mss.tools.to_png(sct_img.rgb, sct_img.size)
+                t_grab1 = time.time()
+                # Convert raw RGB buffer into a PIL image and encode as JPEG.
+                img = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
+                buf = io.BytesIO()
+                t_enc0 = time.time()
+                img.save(buf, format="JPEG", quality=quality, optimize=True)
+                t_enc1 = time.time()
+                img_bytes = buf.getvalue()
+                mime = "image/jpeg"
 
-            b64 = base64.b64encode(png_bytes).decode("ascii")
+            b64 = base64.b64encode(img_bytes).decode("ascii")
+            t1 = time.time()
+            _json_log(
+                "screenshot_done",
+                monitor_nr=monitor_nr,
+                format="jpeg",
+                quality=quality,
+                bytes=len(img_bytes),
+                width=int(sct_img.size.width),
+                height=int(sct_img.size.height),
+                grab_ms=round((t_grab1 - t_grab0) * 1000.0, 2),
+                encode_ms=round((t_enc1 - t_enc0) * 1000.0, 2),
+                total_ms=round((t1 - t0) * 1000.0, 2),
+            )
             return True, "ok", {
-                "mime": "image/png",
+                "mime": mime,
                 "encoding": "base64",
-                "png_base64": b64,
+                "jpeg_base64": b64,
+                "format": "jpeg",
+                "quality": quality,
+                "bytes": len(img_bytes),
                 "monitor_nr": monitor_nr,
                 "size": {"width": int(sct_img.size.width), "height": int(sct_img.size.height)},
             }
@@ -330,7 +407,15 @@ def _execute_command(
 
 
 async def _send_json(ws, obj: Dict[str, Any]) -> None:
-    await ws.send(json.dumps(obj))
+    # Reverb/Pusher wire format commonly uses `data` as a JSON string.
+    # Incoming messages may encode `data` as a string; we parse it via `_parse_pusher_data_field`.
+    # For maximum compatibility (and to avoid "silent drops" on large payloads), encode
+    # outgoing `data` when it is a dict/list.
+    out = dict(obj)
+    data = out.get("data")
+    if data is not None and not isinstance(data, str):
+        out["data"] = json.dumps(data, separators=(",", ":"))
+    await ws.send(json.dumps(out, separators=(",", ":")))
 
 
 async def _await_connection_established(ws) -> str:
@@ -444,6 +529,8 @@ async def _cloud_message_loop(ws, cfg: ReverbClientConfig, relay_gateway: Option
             logger.warning("server-command with unexpected data: %r", data)
             continue
 
+        logger.info("Received server-command")
+
         relay_client_id, relay_msg_id, stripped = _extract_and_strip_relay(data)
         if relay_gateway is not None and relay_client_id:
             routed = await relay_gateway.send_from_cloud(
@@ -457,6 +544,22 @@ async def _cloud_message_loop(ws, cfg: ReverbClientConfig, relay_gateway: Option
                     "cloud_to_local_route_failed",
                     client_id=relay_client_id,
                     relay_msg_id=relay_msg_id,
+                )
+                # Don't fail silently: report back to cloud so the UI can surface it.
+                correlation_id = str(stripped.get("correlation_id", ""))
+                command_name = str(stripped.get("command_name", ""))
+                await _send_json(
+                    ws,
+                    {
+                        "event": "client-command-result",
+                        "channel": cfg.channel,
+                        "data": {
+                            "correlation_id": correlation_id,
+                            "command_name": command_name,
+                            "ok": False,
+                            "message": f"Relay client not connected: {relay_client_id}",
+                        },
+                    },
                 )
             continue
 
@@ -485,6 +588,12 @@ async def _cloud_message_loop(ws, cfg: ReverbClientConfig, relay_gateway: Option
                 },
             },
         )
+        logger.info("Sent client-command-result ok=%s command=%s", bool(ok), command_name)
+
+    # If we reach here, the websocket iterator ended, meaning the connection closed.
+    # Treat this as a disconnect so the outer retry loop applies backoff instead of
+    # reconnecting in a tight loop (e.g. during Reverb restarts).
+    raise RuntimeError("Cloud WebSocket closed")
 
 
 @dataclass(frozen=True)
@@ -580,12 +689,29 @@ async def _connect_and_run_cloud_session(
                 ssl_ctx.check_hostname = False
                 ssl_ctx.verify_mode = ssl.CERT_NONE
 
-            async with websockets.connect(
-                ws_url,
+            headers: List[Tuple[str, str]] = []
+            if cfg.ws_origin:
+                headers.append(("Origin", cfg.ws_origin))
+            if cfg.ws_user_agent:
+                headers.append(("User-Agent", cfg.ws_user_agent))
+
+            # Only set 'ssl' key if needed, to avoid incompatibility with wss:// and ssl=None.
+            connect_kwargs: Dict[str, Any] = dict(
                 ping_interval=None,
                 max_size=cfg.max_message_bytes,
-                ssl=ssl_ctx,
-            ) as ws:
+            )
+            if ssl_ctx is not None:
+                connect_kwargs["ssl"] = ssl_ctx
+
+            # websockets has changed kwarg naming over time:
+            # - older: extra_headers
+            # - newer: additional_headers
+            try:
+                connect_cm = websockets.connect(ws_url, additional_headers=headers, **connect_kwargs)
+            except TypeError:
+                connect_cm = websockets.connect(ws_url, extra_headers=headers, **connect_kwargs)
+
+            async with connect_cm as ws:
                 socket_id = await _await_connection_established(ws)
                 cloud_connected.set()
                 _json_log("cloud_ws_connected", socket_id=socket_id)
@@ -679,12 +805,18 @@ async def _run_reverb_client_with_local_relay(cfg: ReverbClientConfig) -> None:
                 "cloud_connected": bool(cloud_connected.is_set()),
             }
 
-        relay_gateway = RelayGateway(
-            relay_cfg,
-            enqueue_to_cloud=enqueue_to_cloud,
-            cloud_connected=lambda: bool(cloud_connected.is_set()),
-        )
-        await relay_gateway.start()
+        if not relay_cfg.token:
+            # If there's no token, local clients can never connect; don't start the relay.
+            # This avoids "black-holing" cloud commands that contain a relay envelope.
+            _json_log("local_relay_disabled", reason="LOCAL_RELAY_TOKEN is empty")
+            relay_gateway = None
+        else:
+            relay_gateway = RelayGateway(
+                relay_cfg,
+                enqueue_to_cloud=enqueue_to_cloud,
+                cloud_connected=lambda: bool(cloud_connected.is_set()),
+            )
+            await relay_gateway.start()
     except Exception as e:
         relay_gateway = None
         _json_log("local_relay_start_failed", error=str(e))
@@ -705,9 +837,41 @@ def run_reverb_client_forever() -> None:
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
-    cfg = ReverbClientConfig.from_env()
-    try:
-        asyncio.run(_run_reverb_client_with_local_relay(cfg))
-    except KeyboardInterrupt:
-        raise
+    # If something unexpected bubbles up (e.g. connection reset during Reverb restarts,
+    # dependency/runtime issues, etc.), do not exit the process. Restart after a delay.
+    base_delay_s = float(os.getenv("REVERB_MAIN_RESTART_DELAY_SECONDS", "2.0"))
+    cap_delay_s = float(os.getenv("REVERB_MAIN_RESTART_DELAY_CAP_SECONDS", "60.0"))
+    delay_s = max(0.1, base_delay_s)
+
+    while True:
+        try:
+            # Check SEM mode connectivity at startup
+            check_sem_mode_at_startup()
+            cfg = ReverbClientConfig.from_env()
+            asyncio.run(_run_reverb_client_with_local_relay(cfg))
+            # If the asyncio run returns normally, reset delay and continue (should be rare;
+            # the inner WS loop is intended to run forever).
+            delay_s = max(0.1, base_delay_s)
+        except KeyboardInterrupt:
+            raise
+        except asyncio.CancelledError as e:
+            # In some Python versions this inherits BaseException; keep the process alive.
+            _json_log(
+                "reverb_main_cancelled",
+                error_type=type(e).__name__,
+                error=str(e),
+                retry_in_seconds=round(delay_s, 3),
+            )
+            time.sleep(delay_s)
+            delay_s = min(cap_delay_s, delay_s * 2.0)
+        except Exception as e:
+            _json_log(
+                "reverb_main_crashed",
+                error_type=type(e).__name__,
+                error=str(e),
+                error_repr=repr(e),
+                retry_in_seconds=round(delay_s, 3),
+            )
+            time.sleep(delay_s)
+            delay_s = min(cap_delay_s, delay_s * 2.0)
 

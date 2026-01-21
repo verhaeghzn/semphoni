@@ -83,7 +83,7 @@ class Client extends Model
         return $this->hasOne(ClientScreenshot::class);
     }
 
-    public function isActive(int $seconds = 20): bool
+    public function isActive(int $seconds = 90): bool
     {
         if ($this->is_active === false) {
             return false;
