@@ -204,3 +204,86 @@ test('visual feed panel shows offline badge and disables live toggle when client
         ->assertSee('disabled', escape: false);
 });
 
+test('visual feed clamps monitor selection to client monitor_count when configured', function () {
+    Event::fake([ClientCommandDispatched::class]);
+
+    /** @var User $user */
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $system = System::factory()->create();
+
+    $now = Carbon::create(2026, 1, 20, 12, 0, 0, 'UTC');
+    Carbon::setTestNow($now);
+
+    $client = Client::factory()->create([
+        'system_id' => $system->id,
+        'can_screenshot' => true,
+        'monitor_count' => 1,
+        'is_active' => true,
+    ]);
+
+    ClientLog::factory()->create([
+        'client_id' => $client->id,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    Livewire::test(\App\Livewire\Systems\ClientVisualFeed::class, [
+        'systemId' => $system->id,
+        'clientId' => $client->id,
+        'canControl' => true,
+    ])
+        ->set('visualFeedMonitorNr', 3)
+        ->set('visualFeedEnabled', true)
+        ->assertSet('visualFeedMonitorNr', 1);
+
+    Event::assertDispatched(ClientCommandDispatched::class, function (ClientCommandDispatched $event): bool {
+        expect($event->commandName)->toBe('get_screenshot');
+        expect($event->payload)->toMatchArray([
+            'monitor_nr' => 1,
+        ]);
+
+        return true;
+    });
+
+    Carbon::setTestNow();
+});
+
+test('visual feed persists and reloads latest interval and monitor settings', function () {
+    /** @var User $user */
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $system = System::factory()->create();
+
+    $client = Client::factory()->create([
+        'system_id' => $system->id,
+        'can_screenshot' => true,
+        'monitor_count' => 3,
+    ]);
+
+    $sessionKey = 'visual_feed.settings.user_'.$user->id.'.client_'.$client->id;
+
+    Livewire::test(\App\Livewire\Systems\ClientVisualFeed::class, [
+        'systemId' => $system->id,
+        'clientId' => $client->id,
+        'canControl' => true,
+    ])
+        ->set('visualFeedIntervalSeconds', 12)
+        ->set('visualFeedMonitorNr', 2);
+
+    expect(session()->get($sessionKey))->toMatchArray([
+        'interval_seconds' => 12,
+        'monitor_nr' => 2,
+    ]);
+
+    Livewire::test(\App\Livewire\Systems\ClientVisualFeed::class, [
+        'systemId' => $system->id,
+        'clientId' => $client->id,
+        'canControl' => true,
+    ])
+        ->assertSet('visualFeedIntervalSeconds', 12)
+        ->assertSet('visualFeedMonitorNr', 2);
+});
+

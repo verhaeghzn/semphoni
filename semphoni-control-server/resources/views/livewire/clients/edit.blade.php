@@ -67,6 +67,23 @@
         </div>
 
         <flux:checkbox wire:model="canScreenshot" :label="__('Client can take screenshots')" />
+
+        @if ($canScreenshot)
+            <div class="space-y-1">
+                <flux:input
+                    wire:model="monitorCount"
+                    :label="__('Monitor count (optional)')"
+                    type="number"
+                    min="1"
+                    max="10"
+                />
+
+                <flux:text class="text-xs text-zinc-500">
+                    {{ __('Used to render monitor selection (1..n) in the visual feed.') }}
+                </flux:text>
+            </div>
+        @endif
+
         <flux:checkbox wire:model="isActive" :label="__('Enable websocket + heartbeat checks')" />
 
         <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">

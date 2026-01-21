@@ -35,6 +35,8 @@ class Edit extends Component
 
     public bool $canScreenshot = false;
 
+    public ?int $monitorCount = null;
+
     public bool $isActive = true;
 
     /**
@@ -58,6 +60,7 @@ class Edit extends Component
         $this->widthPx = $client->width_px;
         $this->heightPx = $client->height_px;
         $this->canScreenshot = $client->can_screenshot;
+        $this->monitorCount = $client->monitor_count;
         $this->isActive = $client->is_active;
 
         $this->systems = System::query()->orderBy('name')->get();
@@ -70,6 +73,13 @@ class Edit extends Component
         $this->authorize('clients.manage');
 
         $this->apiKey = Str::random(40);
+    }
+
+    public function updatedCanScreenshot(bool $canScreenshot): void
+    {
+        if ($canScreenshot === false) {
+            $this->monitorCount = null;
+        }
     }
 
     public function save(): void
@@ -90,6 +100,7 @@ class Edit extends Component
             'widthPx' => ['required', 'integer', 'min:1'],
             'heightPx' => ['required', 'integer', 'min:1'],
             'canScreenshot' => ['boolean'],
+            'monitorCount' => ['nullable', 'integer', 'min:1', 'max:10'],
             'isActive' => ['boolean'],
         ], [
             'apiKey.unique' => __('This API key is already in use.'),
@@ -104,6 +115,7 @@ class Edit extends Component
             'width_px' => $validated['widthPx'],
             'height_px' => $validated['heightPx'],
             'can_screenshot' => $validated['canScreenshot'],
+            'monitor_count' => $validated['canScreenshot'] ? ($validated['monitorCount'] ?? null) : null,
             'is_active' => $validated['isActive'],
         ]);
 

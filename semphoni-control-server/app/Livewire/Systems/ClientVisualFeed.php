@@ -30,9 +30,13 @@ class ClientVisualFeed extends Component
 
     public bool $visualFeedEnabled = false;
 
+    public bool $visualFeedFullscreen = false;
+
     public int $visualFeedIntervalSeconds = 5;
 
     public int $visualFeedMonitorNr = 1;
+
+    public int $visualFeedMonitorMax = 3;
 
     public ?string $lastScreenshotCorrelationId = null;
 
@@ -49,6 +53,7 @@ class ClientVisualFeed extends Component
         $this->canControl = $canControl;
 
         $this->refreshClientState();
+        $this->loadVisualFeedSettings();
         $this->loadSavedScreenshot();
     }
 
@@ -72,11 +77,25 @@ class ClientVisualFeed extends Component
     public function updatedVisualFeedIntervalSeconds(mixed $seconds): void
     {
         $this->visualFeedIntervalSeconds = max(1, min(60, (int) $seconds));
+        $this->persistVisualFeedSettings();
     }
 
     public function updatedVisualFeedMonitorNr(mixed $monitorNr): void
     {
-        $this->visualFeedMonitorNr = max(1, min(3, (int) $monitorNr));
+        $this->visualFeedMonitorNr = max(1, min($this->visualFeedMonitorMax, (int) $monitorNr));
+        $this->persistVisualFeedSettings();
+    }
+
+    public function decrementVisualFeedInterval(): void
+    {
+        $this->visualFeedIntervalSeconds = max(1, $this->visualFeedIntervalSeconds - 1);
+        $this->persistVisualFeedSettings();
+    }
+
+    public function incrementVisualFeedInterval(): void
+    {
+        $this->visualFeedIntervalSeconds = min(60, $this->visualFeedIntervalSeconds + 1);
+        $this->persistVisualFeedSettings();
     }
 
     public function refreshScreenshot(ClientCommandService $service): void
@@ -102,6 +121,11 @@ class ClientVisualFeed extends Component
         $this->requestScreenshot($service);
     }
 
+    public function toggleVisualFeedFullscreen(): void
+    {
+        $this->visualFeedFullscreen = ! $this->visualFeedFullscreen;
+    }
+
     public function render(): View
     {
         return view('livewire.systems.client-visual-feed');
@@ -114,12 +138,22 @@ class ClientVisualFeed extends Component
         if (! $client instanceof Client) {
             $this->clientName = __('Client');
             $this->clientIsOffline = true;
+            $this->visualFeedMonitorMax = 3;
 
             return;
         }
 
         $this->clientName = $client->name;
         $this->clientIsOffline = ! $client->isActive();
+
+        $this->visualFeedMonitorMax = $this->normalizeMonitorCount($client->monitor_count);
+
+        $previousMonitor = $this->visualFeedMonitorNr;
+        $this->visualFeedMonitorNr = max(1, min($this->visualFeedMonitorMax, $this->visualFeedMonitorNr));
+
+        if ($this->visualFeedMonitorNr !== $previousMonitor) {
+            $this->persistVisualFeedSettings();
+        }
     }
 
     private function client(): ?Client
@@ -167,6 +201,48 @@ class ClientVisualFeed extends Component
         $this->lastScreenshotCorrelationId = $service->dispatchToClient($client, $command, [
             'monitor_nr' => $this->visualFeedMonitorNr,
         ]);
+    }
+
+    private function normalizeMonitorCount(?int $monitorCount): int
+    {
+        $monitorCount ??= 3;
+
+        return max(1, min(10, $monitorCount));
+    }
+
+    private function loadVisualFeedSettings(): void
+    {
+        $settings = session()->get($this->visualFeedSettingsKey());
+
+        if (! is_array($settings)) {
+            return;
+        }
+
+        $interval = $settings['interval_seconds'] ?? null;
+        $monitor = $settings['monitor_nr'] ?? null;
+
+        if (is_int($interval) || is_string($interval)) {
+            $this->visualFeedIntervalSeconds = max(1, min(60, (int) $interval));
+        }
+
+        if (is_int($monitor) || is_string($monitor)) {
+            $this->visualFeedMonitorNr = max(1, min($this->visualFeedMonitorMax, (int) $monitor));
+        }
+    }
+
+    private function persistVisualFeedSettings(): void
+    {
+        session()->put($this->visualFeedSettingsKey(), [
+            'interval_seconds' => $this->visualFeedIntervalSeconds,
+            'monitor_nr' => $this->visualFeedMonitorNr,
+        ]);
+    }
+
+    private function visualFeedSettingsKey(): string
+    {
+        $userId = Auth::id() ?? 0;
+
+        return 'visual_feed.settings.user_'.$userId.'.client_'.$this->clientId;
     }
 
     private function loadLatestScreenshotFromLogs(): bool

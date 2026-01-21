@@ -25,6 +25,7 @@ class ClientFactory extends Factory
             'width_px' => fake()->numberBetween(800, 4000),
             'height_px' => fake()->numberBetween(600, 3000),
             'can_screenshot' => fake()->boolean(),
+            'monitor_count' => null,
             'is_active' => true,
         ];
     }

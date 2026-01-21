@@ -27,6 +27,7 @@ class SystemSeeder extends Seeder
                 'width_px' => 1920,
                 'height_px' => 1080,
                 'can_screenshot' => true,
+                'monitor_count' => 1,
             ],
         );
 

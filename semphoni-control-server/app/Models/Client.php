@@ -27,6 +27,7 @@ class Client extends Model
         'width_px',
         'height_px',
         'can_screenshot',
+        'monitor_count',
         'is_active',
     ];
 
@@ -34,6 +35,7 @@ class Client extends Model
     {
         return [
             'can_screenshot' => 'bool',
+            'monitor_count' => 'int',
             'is_active' => 'bool',
         ];
     }
