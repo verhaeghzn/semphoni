@@ -45,7 +45,7 @@
         <div class="grid gap-3 sm:grid-cols-2">
             <div class="space-y-2">
                 <flux:input
-                    wire:model.live="visualFeedIntervalSeconds"
+                    wire:model.live.number="visualFeedIntervalSeconds"
                     :label="__('Interval (seconds)')"
                     type="number"
                     min="1"
@@ -87,7 +87,8 @@
                             <input
                                 type="radio"
                                 class="peer sr-only"
-                                wire:model.live="visualFeedMonitorNr"
+                                wire:model.live.number="visualFeedMonitorNr"
+                                name="visualFeedMonitorNr-{{ $clientId }}"
                                 value="{{ $monitorNr }}"
                                 @disabled(! $canControl || $clientIsOffline)
                             />
