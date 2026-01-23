@@ -21,14 +21,6 @@
 @endif
 
 <div class="grid gap-4">
-    <flux:select wire:model.live="clientId" :label="__('Client')" :disabled="! $canControl || $selectedClientIsOffline">
-        @foreach ($clients as $client)
-            <flux:select.option :value="$client->id">
-                {{ $client->name }}
-            </flux:select.option>
-        @endforeach
-    </flux:select>
-
     <flux:select wire:model.live="commandId" :label="__('Command')" :disabled="! $canControl || $selectedClientIsOffline">
         @foreach ($commands as $command)
             <flux:select.option :value="$command->id">
@@ -39,13 +31,40 @@
 </div>
 
 <div class="flex items-center gap-2">
-    <flux:button
-        variant="primary"
-        type="button"
-        wire:click="dispatchSelectedCommand"
-        wire:loading.attr="disabled"
-        :disabled="! $canControl || $selectedClientIsOffline"
-    >
-        {{ __('Send') }}
-    </flux:button>
+    @php
+        $selectedCommand = $commands->firstWhere('id', $commandId);
+        $isButtonCommand = $selectedCommand && $selectedCommand->action_type === \App\Enums\ActionType::ButtonPress;
+    @endphp
+
+    @if ($isButtonCommand)
+        <flux:button
+            variant="outline"
+            type="button"
+            wire:click="dispatchSelectedCommand('{{ \App\Enums\CommandType::GotoButton->value }}')"
+            wire:loading.attr="disabled"
+            :disabled="! $canControl || $selectedClientIsOffline"
+        >
+            {{ __('Move to button') }}
+        </flux:button>
+
+        <flux:button
+            variant="primary"
+            type="button"
+            wire:click="dispatchSelectedCommand('{{ \App\Enums\CommandType::ClickButton->value }}')"
+            wire:loading.attr="disabled"
+            :disabled="! $canControl || $selectedClientIsOffline"
+        >
+            {{ __('Click button') }}
+        </flux:button>
+    @else
+        <flux:button
+            variant="primary"
+            type="button"
+            wire:click="dispatchSelectedCommand"
+            wire:loading.attr="disabled"
+            :disabled="! $canControl || $selectedClientIsOffline"
+        >
+            {{ __('Send') }}
+        </flux:button>
+    @endif
 </div>

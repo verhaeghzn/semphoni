@@ -46,6 +46,8 @@ class ClientVisualFeed extends Component
 
     public ?string $lastScreenshotTakenAtLabel = null;
 
+    public bool $screenshotIsOld = false;
+
     public function mount(int $systemId, int $clientId, bool $canControl): void
     {
         $this->systemId = $systemId;
@@ -55,6 +57,11 @@ class ClientVisualFeed extends Component
         $this->refreshClientState();
         $this->loadVisualFeedSettings();
         $this->loadSavedScreenshot();
+
+        // Auto-enable live view if client is online
+        if (! $this->clientIsOffline && $this->canControl) {
+            $this->visualFeedEnabled = true;
+        }
     }
 
     public function updatedVisualFeedEnabled(bool $enabled): void
@@ -145,7 +152,18 @@ class ClientVisualFeed extends Component
         }
 
         $this->clientName = $client->name;
+        $wasOffline = $this->clientIsOffline;
         $this->clientIsOffline = ! $client->isActive();
+
+        // Auto-enable live view if client comes online
+        if ($wasOffline && ! $this->clientIsOffline && $this->canControl) {
+            $this->visualFeedEnabled = true;
+        }
+
+        // Disable live view if client goes offline
+        if (! $wasOffline && $this->clientIsOffline) {
+            $this->visualFeedEnabled = false;
+        }
 
         $this->visualFeedMonitorMax = $this->normalizeMonitorCount($client->monitor_count);
 
@@ -304,12 +322,16 @@ class ClientVisualFeed extends Component
         if (! $takenAt instanceof CarbonInterface) {
             $this->lastScreenshotTakenAtIso = null;
             $this->lastScreenshotTakenAtLabel = null;
+            $this->screenshotIsOld = false;
 
             return;
         }
 
         $this->lastScreenshotTakenAtIso = $takenAt->toIso8601String();
         $this->lastScreenshotTakenAtLabel = $takenAt->toDayDateTimeString();
+
+        // Consider screenshot old if it's more than 30 seconds old
+        $this->screenshotIsOld = $takenAt->lessThan(now()->subSeconds(30));
     }
 
     private function ensureUserCanControl(int $systemId): void

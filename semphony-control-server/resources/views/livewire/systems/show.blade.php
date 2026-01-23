@@ -100,60 +100,91 @@
     </nav>
 
     @if ($tab === 'command-center')
-        <div class="grid gap-6 lg:grid-cols-4">
-            <div class="space-y-6 lg:col-span-3">
-                @if ($canControl)
-                    <div wire:poll.60s="keepControlLockAlive"></div>
-                @endif
+        @if ($clients->isEmpty())
+            <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                <flux:text class="text-sm text-zinc-600">
+                    {{ __('No clients available.') }}
+                </flux:text>
+            </div>
+        @else
+            <nav class="flex flex-wrap gap-2 border-b border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="{{ __('Client tabs') }}">
+                @foreach ($clients as $client)
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected="{{ $selectedClientId === $client->id ? 'true' : 'false' }}"
+                        wire:click="selectClient({{ $client->id }})"
+                        @class([
+                            '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950',
+                            'border-transparent text-zinc-600 hover:border-neutral-300 hover:text-zinc-900 dark:text-zinc-300 dark:hover:border-neutral-700 dark:hover:text-white' => $selectedClientId !== $client->id,
+                            'border-accent text-zinc-900 dark:text-white' => $selectedClientId === $client->id,
+                        ])
+                    >
+                        {{ $client->name }}
+                        @if (!$client->isActive())
+                            <span class="ml-1 text-xs opacity-75">({{ __('Offline') }})</span>
+                        @endif
+                    </button>
+                @endforeach
+            </nav>
 
+            @if ($selectedClientId)
                 @php
-                    $screenshotClients = $clients->where('can_screenshot', true);
+                    $selectedClient = $clients->firstWhere('id', $selectedClientId);
                 @endphp
 
-                <div class="space-y-6">
-                    @forelse ($screenshotClients as $client)
-                        <livewire:systems.client-visual-feed
-                            :system-id="$system->id"
-                            :client-id="$client->id"
-                            :can-control="$canControl"
-                            :key="'visual-feed-'.$client->id"
-                        />
-                    @empty
-                        <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                            <flux:text class="text-sm text-zinc-600">
-                                {{ __('No screenshot-capable clients available.') }}
-                            </flux:text>
+                @if ($selectedClient)
+                    <div class="grid gap-6 lg:grid-cols-4 mt-6">
+                        <div class="space-y-6 lg:col-span-3">
+                            @if ($canControl)
+                                <div wire:poll.60s="keepControlLockAlive"></div>
+                            @endif
+
+                            @if ($selectedClient->can_screenshot)
+                                <livewire:systems.client-visual-feed
+                                    :system-id="$system->id"
+                                    :client-id="$selectedClient->id"
+                                    :can-control="$canControl"
+                                    :key="'visual-feed-'.$selectedClient->id"
+                                />
+                            @else
+                                <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                                    <flux:text class="text-sm text-zinc-600">
+                                        {{ __('This client does not support screenshots.') }}
+                                    </flux:text>
+                                </div>
+                            @endif
                         </div>
-                    @endforelse
-                </div>
-            </div>
 
-            <div class="space-y-6 lg:col-span-1">
-                <div class="rounded-xl border border-neutral-200 bg-white p-4 space-y-4 dark:border-neutral-800 dark:bg-neutral-950">
-                    <div class="flex items-center justify-between gap-4">
-                        <flux:heading>{{ __('Send command') }}</flux:heading>
+                        <div class="space-y-6 lg:col-span-1">
+                            <div class="rounded-xl border border-neutral-200 bg-white p-4 space-y-4 dark:border-neutral-800 dark:bg-neutral-950">
+                                <div class="flex items-center justify-between gap-4">
+                                    <flux:heading>{{ __('Send command') }}</flux:heading>
+                                </div>
+
+                                @include('livewire.systems.partials.send-command')
+                            </div>
+
+                            <div class="rounded-xl border border-neutral-200 bg-white p-4 space-y-3 dark:border-neutral-800 dark:bg-neutral-950">
+                                <flux:heading>{{ __('Response (raw JSON)') }}</flux:heading>
+
+                                @if ($lastCommandCorrelationId && ! $lastResponseJson)
+                                    <div wire:poll.2s="refreshLatestResponse"></div>
+                                @endif
+
+                                @if ($lastResponseJson)
+                                    <pre class="overflow-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs dark:border-neutral-800 dark:bg-neutral-900/30">{{ $lastResponseJson }}</pre>
+                                @else
+                                    <flux:text class="text-sm text-zinc-600">
+                                        {{ __('No response yet.') }}
+                                    </flux:text>
+                                @endif
+                            </div>
+                        </div>
                     </div>
-
-                    @include('livewire.systems.partials.send-command')
-                </div>
-
-                <div class="rounded-xl border border-neutral-200 bg-white p-4 space-y-3 dark:border-neutral-800 dark:bg-neutral-950">
-                    <flux:heading>{{ __('Response (raw JSON)') }}</flux:heading>
-
-                    @if ($lastCommandCorrelationId && ! $lastResponseJson)
-                        <div wire:poll.2s="refreshLatestResponse"></div>
-                    @endif
-
-                    @if ($lastResponseJson)
-                        <pre class="overflow-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs dark:border-neutral-800 dark:bg-neutral-900/30">{{ $lastResponseJson }}</pre>
-                    @else
-                        <flux:text class="text-sm text-zinc-600">
-                            {{ __('No response yet.') }}
-                        </flux:text>
-                    @endif
-                </div>
-            </div>
-        </div>
+                @endif
+            @endif
+        @endif
     @endif
 
     @if ($tab === 'logs')

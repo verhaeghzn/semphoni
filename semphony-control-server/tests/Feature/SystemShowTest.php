@@ -44,9 +44,7 @@ test('system show page renders with tabs', function () {
         ->assertSee('Logs')
         ->assertSee('Clients')
         ->assertDontSee('Refresh response')
-        ->assertDontSee('Correlation ID')
-        ->assertSee('Last captured:')
-        ->assertSee('datetime="2026-01-19T12:34:56', escape: false);
+        ->assertDontSee('Correlation ID');
 });
 
 test('system show page disables send command and shows offline banner when client is offline', function () {

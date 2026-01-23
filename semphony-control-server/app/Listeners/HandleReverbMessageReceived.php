@@ -182,7 +182,7 @@ class HandleReverbMessageReceived
         } elseif (is_string($data['command_id'] ?? null) && ctype_digit($data['command_id'])) {
             $commandId = (int) $data['command_id'];
         } elseif (is_string($data['command_name'] ?? null) && $data['command_name'] !== '') {
-            if ($data['command_name'] === 'clickButton') {
+            if ($data['command_name'] === 'clickButton' || $data['command_name'] === 'gotoButton') {
                 $buttonName = $this->extractButtonNameFromResult($data);
 
                 if ($buttonName !== null) {
@@ -244,4 +244,3 @@ class HandleReverbMessageReceived
         ]);
     }
 }
-

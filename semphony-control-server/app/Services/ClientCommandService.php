@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ActionType;
+use App\Enums\CommandType;
 use App\Enums\LogDirection;
 use App\Events\ClientCommandDispatched;
 use App\Models\Client;
@@ -75,8 +76,20 @@ class ClientCommandService
         }
 
         if ($command->action_type === ActionType::ButtonPress) {
+            $commandType = $payload['command_type'] ?? null;
+
+            if ($commandType === CommandType::GotoButton->value) {
+                return [
+                    CommandType::GotoButton->value,
+                    [
+                        ...$payload,
+                        'button_name' => $command->name,
+                    ],
+                ];
+            }
+
             return [
-                'clickButton',
+                CommandType::ClickButton->value,
                 [
                     ...$payload,
                     'button_name' => $command->name,

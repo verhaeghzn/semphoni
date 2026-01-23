@@ -61,7 +61,7 @@ test('non-owner users cannot dispatch commands while a system is locked', functi
     actingAs($otherUser);
 
     Livewire::test(\App\Livewire\Systems\Show::class, ['system' => $system])
-        ->set('clientId', $client->id)
+        ->set('selectedClientId', $client->id)
         ->set('commandId', $command->id)
         ->call('dispatchSelectedCommand')
         ->assertForbidden();

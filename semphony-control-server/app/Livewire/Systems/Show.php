@@ -21,7 +21,7 @@ class Show extends Component
 
     public string $tab = 'command-center';
 
-    public ?int $clientId = null;
+    public ?int $selectedClientId = null;
 
     public ?int $commandId = null;
 
@@ -64,12 +64,12 @@ class Show extends Component
             ->orderBy('name')
             ->get();
 
-        $this->clientId = $this->clients->first()?->id;
+        $this->selectedClientId = $this->clients->first()?->id;
 
         $this->refreshCommands();
     }
 
-    public function updatedClientId(): void
+    public function updatedSelectedClientId(): void
     {
         $this->commandId = null;
         $this->lastCommandCorrelationId = null;
@@ -78,12 +78,18 @@ class Show extends Component
         $this->refreshCommands();
     }
 
+    public function selectClient(int $clientId): void
+    {
+        $this->selectedClientId = $clientId;
+        $this->updatedSelectedClientId();
+    }
+
     public function selectTab(string $tab): void
     {
         $this->tab = $tab;
     }
 
-    public function dispatchSelectedCommand(ClientCommandService $service): void
+    public function dispatchSelectedCommand(ClientCommandService $service, ?string $commandType = null): void
     {
         $this->ensureUserCanControl($this->systemId);
 
@@ -96,7 +102,13 @@ class Show extends Component
         );
 
         $this->lastResponseJson = null;
-        $this->lastCommandCorrelationId = $service->dispatchToClient($client, $command);
+
+        $payload = [];
+        if ($commandType !== null) {
+            $payload['command_type'] = $commandType;
+        }
+
+        $this->lastCommandCorrelationId = $service->dispatchToClient($client, $command, $payload);
 
         session()->flash('status', __('Command dispatched.'));
     }
@@ -151,12 +163,12 @@ class Show extends Component
 
     public function refreshLatestResponse(): void
     {
-        if ($this->lastCommandCorrelationId === null || $this->clientId === null) {
+        if ($this->lastCommandCorrelationId === null || $this->selectedClientId === null) {
             return;
         }
 
         $log = ClientLog::query()
-            ->where('client_id', $this->clientId)
+            ->where('client_id', $this->selectedClientId)
             ->where('payload->event', 'client-command-result')
             ->where('payload->data->correlation_id', $this->lastCommandCorrelationId)
             ->latest('id')
@@ -181,11 +193,11 @@ class Show extends Component
         $selectedClientIsOffline = false;
         $selectedClientOfflineSince = null;
 
-        if (is_int($this->clientId)) {
+        if (is_int($this->selectedClientId)) {
             $selectedClient = Client::query()
                 ->where('system_id', $this->systemId)
                 ->with('latestLog')
-                ->find($this->clientId);
+                ->find($this->selectedClientId);
 
             if ($selectedClient instanceof Client) {
                 $selectedClientIsOffline = ! $selectedClient->isActive();
@@ -220,7 +232,7 @@ class Show extends Component
 
     private function refreshCommands(): void
     {
-        if ($this->clientId === null) {
+        if ($this->selectedClientId === null) {
             $this->commands = collect();
 
             return;
@@ -228,7 +240,7 @@ class Show extends Component
 
         $client = Client::query()
             ->with('commands')
-            ->find($this->clientId);
+            ->find($this->selectedClientId);
 
         $this->commands = $client?->commands?->sortBy('name')->values() ?? collect();
 
@@ -237,7 +249,7 @@ class Show extends Component
 
     private function selectedClient(): Client
     {
-        $clientId = $this->clientId;
+        $clientId = $this->selectedClientId;
 
         abort_unless(is_int($clientId), 404);
 

@@ -1,0 +1,158 @@
+#ddev-generated
+# If you remove the ddev-generated line above you
+# are responsible for maintaining this file. DDEV will not then
+# update it, for example if you add `additional_hostnames`, etc.
+
+http:
+  routers:
+    semphoni-control-server-web-80-http:
+      entrypoints:
+        - http-80
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-80"
+      ruleSyntax: v3
+      tls: false
+      # middlewares:
+      #   - "semphoni-control-server-redirectHttps"
+    semphoni-control-server-web-8025-http:
+      entrypoints:
+        - http-8025
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-8025"
+      ruleSyntax: v3
+      tls: false
+      # middlewares:
+      #   - "semphoni-control-server-redirectHttps"
+    semphoni-control-server-web-5173-http:
+      entrypoints:
+        - http-5172
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-5173"
+      ruleSyntax: v3
+      tls: false
+      # middlewares:
+      #   - "semphoni-control-server-redirectHttps"
+    semphoni-control-server-web-8080-http:
+      entrypoints:
+        - http-8081
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-8080"
+      ruleSyntax: v3
+      tls: false
+      # middlewares:
+      #   - "semphoni-control-server-redirectHttps"
+    semphoni-control-server-xhgui-80-http:
+      entrypoints:
+        - http-8143
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-xhgui-80"
+      ruleSyntax: v3
+      tls: false
+      # middlewares:
+      #   - "semphoni-control-server-redirectHttps"
+    
+    
+    
+    
+    
+    semphoni-control-server-web-80-https:
+      entrypoints:
+        - http-443
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-80"
+      ruleSyntax: v3
+      
+      tls: true
+      
+    semphoni-control-server-web-8025-https:
+      entrypoints:
+        - http-8026
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-8025"
+      ruleSyntax: v3
+      
+      tls: true
+      
+    semphoni-control-server-web-5173-https:
+      entrypoints:
+        - http-5173
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-5173"
+      ruleSyntax: v3
+      
+      tls: true
+      
+    semphoni-control-server-web-8080-https:
+      entrypoints:
+        - http-8080
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-web-8080"
+      ruleSyntax: v3
+      
+      tls: true
+      
+    
+    semphoni-control-server-xhgui-80-https:
+      entrypoints:
+        - http-8142
+      rule: HostRegexp(`^semphoni-control-server\.ddev\.site$`)
+      
+      service: "semphoni-control-server-xhgui-80"
+      ruleSyntax: v3
+      
+      tls: true
+      
+    
+
+  middlewares:
+    semphoni-control-server-redirectHttps:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  services:
+    semphoni-control-server-web-80:
+      loadbalancer:
+        servers:
+          - url: http://ddev-semphoni-control-server-web:80
+        
+    semphoni-control-server-web-8025:
+      loadbalancer:
+        servers:
+          - url: http://ddev-semphoni-control-server-web:8025
+        
+    semphoni-control-server-web-5173:
+      loadbalancer:
+        servers:
+          - url: http://ddev-semphoni-control-server-web:5173
+        
+    semphoni-control-server-web-8080:
+      loadbalancer:
+        servers:
+          - url: http://ddev-semphoni-control-server-web:8080
+        
+    
+    
+    
+    
+    semphoni-control-server-xhgui-80:
+      loadbalancer:
+        servers:
+          - url: http://ddev-semphoni-control-server-xhgui:80
+        
+    
+    
+
+tls:
+  certificates:
+    - certFile: /mnt/ddev-global-cache/traefik/certs/semphoni-control-server.crt
+      keyFile: /mnt/ddev-global-cache/traefik/certs/semphoni-control-server.key
