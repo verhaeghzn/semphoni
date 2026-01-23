@@ -140,6 +140,12 @@ python3 -m sem_control --validate
 python3 -m sem_control --calibrate
 ```
 
+## Proxy/Relay Setup
+
+For environments where one PC (PC2) has internet connectivity and another PC (PC1) is only connected to the local network, the client supports a proxy/relay configuration. PC2 acts as a relay server, forwarding messages between PC1 and the cloud.
+
+See [PROXY_SETUP.md](PROXY_SETUP.md) for detailed setup instructions.
+
 ## Configuration reference
 
 ### Reverb / Pusher-compatible cloud connection (required)
