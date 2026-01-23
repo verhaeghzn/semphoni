@@ -1,14 +1,15 @@
 <?php
 
-use App\Models\System;
-use App\Models\User;
+use App\Events\ClientCommandDispatched;
 use App\Models\Client;
 use App\Models\ClientLog;
 use App\Models\ClientScreenshot;
-use App\Events\ClientCommandDispatched;
+use App\Models\System;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
@@ -44,7 +45,9 @@ test('system show page renders with tabs', function () {
         ->assertSee('Logs')
         ->assertSee('Clients')
         ->assertDontSee('Refresh response')
-        ->assertDontSee('Correlation ID');
+        ->assertDontSee('Correlation ID')
+        ->assertSee('Last captured:')
+        ->assertSee('datetime="2026-01-19T12:34:56', escape: false);
 });
 
 test('system show page disables send command and shows offline banner when client is offline', function () {
@@ -300,4 +303,3 @@ test('visual feed persists and reloads latest interval and monitor settings', fu
         ->assertSet('visualFeedIntervalSeconds', 12)
         ->assertSet('visualFeedMonitorNr', 2);
 });
-

@@ -113,7 +113,7 @@
                         type="button"
                         role="tab"
                         aria-selected="{{ $selectedClientId === $client->id ? 'true' : 'false' }}"
-                        wire:click="selectClient({{ $client->id }})"
+                        wire:click="$set('selectedClientId', {{ $client->id }})"
                         @class([
                             '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950',
                             'border-transparent text-zinc-600 hover:border-neutral-300 hover:text-zinc-900 dark:text-zinc-300 dark:hover:border-neutral-700 dark:hover:text-white' => $selectedClientId !== $client->id,
@@ -121,9 +121,6 @@
                         ])
                     >
                         {{ $client->name }}
-                        @if (!$client->isActive())
-                            <span class="ml-1 text-xs opacity-75">({{ __('Offline') }})</span>
-                        @endif
                     </button>
                 @endforeach
             </nav>
@@ -134,7 +131,7 @@
                 @endphp
 
                 @if ($selectedClient)
-                    <div class="grid gap-6 lg:grid-cols-4 mt-6">
+                    <div class="grid gap-6 lg:grid-cols-4">
                         <div class="space-y-6 lg:col-span-3">
                             @if ($canControl)
                                 <div wire:poll.60s="keepControlLockAlive"></div>
@@ -145,6 +142,7 @@
                                     :system-id="$system->id"
                                     :client-id="$selectedClient->id"
                                     :can-control="$canControl"
+                                    :hide-title="true"
                                     :key="'visual-feed-'.$selectedClient->id"
                                 />
                             @else

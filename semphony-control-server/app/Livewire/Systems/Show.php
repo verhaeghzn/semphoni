@@ -25,6 +25,8 @@ class Show extends Component
 
     public ?int $commandId = null;
 
+    public string $commandType = 'clickButton';
+
     public bool $showHeartbeats = false;
 
     public ?string $lastCommandCorrelationId = null;
@@ -78,18 +80,12 @@ class Show extends Component
         $this->refreshCommands();
     }
 
-    public function selectClient(int $clientId): void
-    {
-        $this->selectedClientId = $clientId;
-        $this->updatedSelectedClientId();
-    }
-
     public function selectTab(string $tab): void
     {
         $this->tab = $tab;
     }
 
-    public function dispatchSelectedCommand(ClientCommandService $service, ?string $commandType = null): void
+    public function dispatchSelectedCommand(ClientCommandService $service): void
     {
         $this->ensureUserCanControl($this->systemId);
 
@@ -102,13 +98,9 @@ class Show extends Component
         );
 
         $this->lastResponseJson = null;
-
-        $payload = [];
-        if ($commandType !== null) {
-            $payload['command_type'] = $commandType;
-        }
-
-        $this->lastCommandCorrelationId = $service->dispatchToClient($client, $command, $payload);
+        $this->lastCommandCorrelationId = $service->dispatchToClient($client, $command, [
+            'command_type' => $this->commandType,
+        ]);
 
         session()->flash('status', __('Command dispatched.'));
     }

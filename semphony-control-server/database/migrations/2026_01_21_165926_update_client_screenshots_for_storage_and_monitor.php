@@ -87,30 +87,43 @@ return new class extends Migration
         $newUniqueName = 'client_screenshots_client_monitor_unique';
 
         // Drop the unique constraint on client_id if it exists
-        // We need to find the actual index name first, as Laravel may have created it with a different name
-        if (DB::getDriverName() === 'mysql') {
-            $indexes = DB::select("
-                SELECT INDEX_NAME
-                FROM information_schema.STATISTICS
-                WHERE TABLE_SCHEMA = DATABASE()
-                AND TABLE_NAME = 'client_screenshots'
-                AND COLUMN_NAME = 'client_id'
-                AND NON_UNIQUE = 0
-            ");
-            
-            foreach ($indexes as $index) {
-                // Drop each unique index on client_id that we find
-                DB::statement("ALTER TABLE `client_screenshots` DROP INDEX `{$index->INDEX_NAME}`");
-            }
-        } else {
-            // For non-MySQL databases, try to drop using Laravel's method
-            Schema::table('client_screenshots', function (Blueprint $table): void {
+        // Try multiple approaches to handle different index naming conventions
+        Schema::table('client_screenshots', function (Blueprint $table): void {
+            // Try dropping by column name (Laravel's default approach)
+            try {
+                $table->dropUnique(['client_id']);
+            } catch (\Exception $e) {
+                // Index might not exist or have a different name, try explicit name
                 try {
-                    $table->dropUnique(['client_id']);
-                } catch (\Exception $e) {
+                    $table->dropUnique('client_screenshots_client_id_unique');
+                } catch (\Exception $e2) {
                     // Index doesn't exist, continue
                 }
-            });
+            }
+        });
+
+        // For MySQL/MariaDB, also try to find and drop any remaining unique indexes on client_id
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            try {
+                $indexes = DB::select("
+                    SELECT INDEX_NAME
+                    FROM information_schema.STATISTICS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'client_screenshots'
+                    AND COLUMN_NAME = 'client_id'
+                    AND NON_UNIQUE = 0
+                ");
+
+                foreach ($indexes as $index) {
+                    try {
+                        DB::statement("ALTER TABLE `client_screenshots` DROP INDEX `{$index->INDEX_NAME}`");
+                    } catch (\Exception $e) {
+                        // Index doesn't exist or was already dropped, continue
+                    }
+                }
+            } catch (\Exception $e) {
+                // Query failed, continue
+            }
         }
 
         // Create the new unique constraint
@@ -183,8 +196,28 @@ return new class extends Migration
         }
 
         Schema::table('client_screenshots', function (Blueprint $table): void {
-            $table->dropUnique('client_screenshots_client_monitor_unique');
-            $table->unique('client_id', 'client_screenshots_client_id_unique');
+            try {
+                $table->dropUnique('client_screenshots_client_monitor_unique');
+            } catch (\Exception $e) {
+                // Index doesn't exist, continue
+            }
+
+            // Check if the unique index on client_id already exists before creating it
+            if (DB::getDriverName() === 'mysql') {
+                $indexExists = DB::selectOne("
+                    SELECT COUNT(*) as count
+                    FROM information_schema.STATISTICS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'client_screenshots'
+                    AND INDEX_NAME = 'client_screenshots_client_id_unique'
+                ");
+
+                if (! $indexExists || $indexExists->count === 0) {
+                    $table->unique('client_id', 'client_screenshots_client_id_unique');
+                }
+            } else {
+                $table->unique('client_id', 'client_screenshots_client_id_unique');
+            }
         });
 
         Schema::table('client_screenshots', function (Blueprint $table): void {

@@ -76,22 +76,23 @@ class ClientCommandService
         }
 
         if ($command->action_type === ActionType::ButtonPress) {
-            $commandType = $payload['command_type'] ?? null;
+            $commandType = $payload['command_type'] ?? CommandType::ClickButton;
 
-            if ($commandType === CommandType::GotoButton->value) {
-                return [
-                    CommandType::GotoButton->value,
-                    [
-                        ...$payload,
-                        'button_name' => $command->name,
-                    ],
-                ];
+            if (is_string($commandType)) {
+                $commandType = CommandType::tryFrom($commandType) ?? CommandType::ClickButton;
             }
 
+            if (! $commandType instanceof CommandType) {
+                $commandType = CommandType::ClickButton;
+            }
+
+            $filteredPayload = $payload;
+            unset($filteredPayload['command_type']);
+
             return [
-                CommandType::ClickButton->value,
+                $commandType->value,
                 [
-                    ...$payload,
+                    ...$filteredPayload,
                     'button_name' => $command->name,
                 ],
             ];

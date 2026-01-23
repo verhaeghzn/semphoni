@@ -7,6 +7,7 @@ use App\Models\System;
 use App\Models\User;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
@@ -107,4 +108,3 @@ test('the lock can be released by the owner', function () {
     expect($system->control_locked_by_user_id)->toBeNull();
     expect($system->control_locked_until)->toBeNull();
 });
-

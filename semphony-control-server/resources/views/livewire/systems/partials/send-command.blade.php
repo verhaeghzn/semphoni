@@ -28,43 +28,52 @@
             </flux:select.option>
         @endforeach
     </flux:select>
+
+    <div class="space-y-2">
+        <label class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            {{ __('Action') }}
+        </label>
+        <div class="flex gap-2">
+            <label class="flex-1">
+                <input
+                    type="radio"
+                    class="peer sr-only"
+                    wire:model="commandType"
+                    value="clickButton"
+                    :disabled="! $canControl || $selectedClientIsOffline"
+                />
+                <span
+                    class="flex items-center justify-center rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-checked:text-white dark:border-neutral-800 dark:bg-neutral-950 dark:text-zinc-100 dark:peer-checked:border-white dark:peer-checked:bg-white dark:peer-checked:text-neutral-900 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+                >
+                    {{ __('Click button') }}
+                </span>
+            </label>
+            <label class="flex-1">
+                <input
+                    type="radio"
+                    class="peer sr-only"
+                    wire:model="commandType"
+                    value="gotoButton"
+                    :disabled="! $canControl || $selectedClientIsOffline"
+                />
+                <span
+                    class="flex items-center justify-center rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-checked:text-white dark:border-neutral-800 dark:bg-neutral-950 dark:text-zinc-100 dark:peer-checked:border-white dark:peer-checked:bg-white dark:peer-checked:text-neutral-900 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+                >
+                    {{ __('Move to button') }}
+                </span>
+            </label>
+        </div>
+    </div>
 </div>
 
 <div class="flex items-center gap-2">
-    @php
-        $selectedCommand = $commands->firstWhere('id', $commandId);
-        $isButtonCommand = $selectedCommand && $selectedCommand->action_type === \App\Enums\ActionType::ButtonPress;
-    @endphp
-
-    @if ($isButtonCommand)
-        <flux:button
-            variant="outline"
-            type="button"
-            wire:click="dispatchSelectedCommand('{{ \App\Enums\CommandType::GotoButton->value }}')"
-            wire:loading.attr="disabled"
-            :disabled="! $canControl || $selectedClientIsOffline"
-        >
-            {{ __('Move to button') }}
-        </flux:button>
-
-        <flux:button
-            variant="primary"
-            type="button"
-            wire:click="dispatchSelectedCommand('{{ \App\Enums\CommandType::ClickButton->value }}')"
-            wire:loading.attr="disabled"
-            :disabled="! $canControl || $selectedClientIsOffline"
-        >
-            {{ __('Click button') }}
-        </flux:button>
-    @else
-        <flux:button
-            variant="primary"
-            type="button"
-            wire:click="dispatchSelectedCommand"
-            wire:loading.attr="disabled"
-            :disabled="! $canControl || $selectedClientIsOffline"
-        >
-            {{ __('Send') }}
-        </flux:button>
-    @endif
+    <flux:button
+        variant="primary"
+        type="button"
+        wire:click="dispatchSelectedCommand"
+        wire:loading.attr="disabled"
+        :disabled="! $canControl || $selectedClientIsOffline"
+    >
+        {{ __('Send') }}
+    </flux:button>
 </div>

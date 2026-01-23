@@ -27,62 +27,77 @@
     }"
 >
     <div
-        class="relative rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/30 overflow-hidden"
+        class="rounded-xl border border-neutral-200 bg-white p-4 space-y-3 dark:border-neutral-800 dark:bg-neutral-950"
         @if ($visualFeedEnabled)
             wire:poll.{{ $visualFeedIntervalSeconds }}s="refreshScreenshot"
         @endif
     >
-        @if ($screenshotDataUrl)
-            <img
-                src="{{ $screenshotDataUrl }}"
-                alt="{{ __('Screenshot') }}"
-                class="w-full h-auto"
-            />
-        @else
-            <div class="flex h-64 items-center justify-center">
-                <flux:text class="text-sm text-zinc-600">
-                    @if ($clientIsOffline)
-                        {{ __('Client is offline.') }}
-                    @else
-                        {{ __('No screenshot available.') }}
-                    @endif
-                </flux:text>
-            </div>
-        @endif
+        <div class="flex items-start justify-between gap-4">
+            @if (! $hideTitle)
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <flux:heading>
+                            {{ __('Visual feed') }}
+                            <span class="text-zinc-500">—</span>
+                            {{ $clientName }}
+                        </flux:heading>
 
-        @if ($screenshotIsOld && $screenshotDataUrl)
-            <div class="absolute inset-0 bg-amber-500/10 border-2 border-amber-500/50 pointer-events-none flex items-center justify-center">
-                <div class="bg-amber-500/90 text-white px-4 py-2 rounded-lg backdrop-blur-sm">
-                    <flux:text class="text-sm font-medium">
-                        {{ __('Screenshot is old') }}
+                        @if ($clientIsOffline)
+                            <flux:badge color="amber">{{ __('OFFLINE') }}</flux:badge>
+                        @endif
+                    </div>
+
+                    <flux:text class="mt-1 text-xs text-zinc-500">
+                        {{ __('Fetches a screenshot every :seconds seconds (monitor :monitor).', ['seconds' => $visualFeedIntervalSeconds, 'monitor' => $visualFeedMonitorNr]) }}
                     </flux:text>
                 </div>
-            </div>
-        @endif
+            @else
+                <div class="min-w-0">
+                    @if ($clientIsOffline)
+                        <flux:badge color="amber">{{ __('OFFLINE') }}</flux:badge>
+                    @endif
+                </div>
+            @endif
 
-        <div class="absolute top-4 left-4 right-4 flex items-center justify-between gap-2 z-10">
-            <div class="flex items-center gap-2 flex-wrap">
-                <div class="flex items-center gap-2 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-neutral-200 dark:border-neutral-700">
+            <div class="flex items-center gap-2">
+                <flux:button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    wire:click="toggleVisualFeedFullscreen"
+                >
+                    {{ __('Fullscreen') }}
+                </flux:button>
+
+                <flux:switch
+                    wire:model.live="visualFeedEnabled"
+                    :label="__('Live')"
+                    :disabled="! $canControl || $clientIsOffline"
+                />
+            </div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+            <div class="space-y-2">
+                <flux:input
+                    wire:model.live.number="visualFeedIntervalSeconds"
+                    :label="__('Interval (seconds)')"
+                    type="number"
+                    min="1"
+                    max="60"
+                    :disabled="! $canControl || $clientIsOffline"
+                />
+
+                <div class="flex items-center gap-2">
                     <flux:button
                         variant="outline"
                         size="sm"
                         type="button"
                         wire:click="decrementVisualFeedInterval"
                         :disabled="! $canControl || $clientIsOffline"
-                        class="!p-1"
                     >
                         −
                     </flux:button>
-
-                    <flux:input
-                        wire:model.live.number="visualFeedIntervalSeconds"
-                        type="number"
-                        min="1"
-                        max="60"
-                        :disabled="! $canControl || $clientIsOffline"
-                        class="w-16 !p-1 text-center"
-                        aria-label="{{ __('Interval (seconds)') }}"
-                    />
 
                     <flux:button
                         variant="outline"
@@ -90,13 +105,18 @@
                         type="button"
                         wire:click="incrementVisualFeedInterval"
                         :disabled="! $canControl || $clientIsOffline"
-                        class="!p-1"
                     >
                         +
                     </flux:button>
                 </div>
+            </div>
 
-                <div class="flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm rounded-lg px-2 py-2 border border-neutral-200 dark:border-neutral-700">
+            <fieldset class="space-y-2" aria-label="{{ __('Monitor') }}">
+                <legend class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {{ __('Monitor') }}
+                </legend>
+
+                <div class="flex flex-wrap gap-2">
                     @for ($monitorNr = 1; $monitorNr <= $visualFeedMonitorMax; $monitorNr++)
                         <label wire:key="monitor-{{ $clientId }}-{{ $monitorNr }}" class="inline-flex">
                             <input
@@ -109,35 +129,48 @@
                             />
 
                             <span
-                                class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs text-zinc-900 transition-colors peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-checked:text-white dark:border-neutral-800 dark:bg-neutral-950 dark:text-zinc-100 dark:peer-checked:border-white dark:peer-checked:bg-white dark:peer-checked:text-neutral-900 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+                                class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-sm text-zinc-900 transition-colors peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-checked:text-white dark:border-neutral-800 dark:bg-neutral-950 dark:text-zinc-100 dark:peer-checked:border-white dark:peer-checked:bg-white dark:peer-checked:text-neutral-900 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
                             >
                                 {{ $monitorNr }}
                             </span>
                         </label>
                     @endfor
                 </div>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <flux:button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    wire:click="toggleVisualFeedFullscreen"
-                    class="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm"
-                >
-                    {{ __('Fullscreen') }}
-                </flux:button>
-            </div>
+            </fieldset>
         </div>
 
+        @if (! $visualFeedEnabled && $lastScreenshotTakenAtIso)
+            <flux:text class="text-xs text-zinc-500">
+                {{ __('Last captured:') }}
+                <time datetime="{{ $lastScreenshotTakenAtIso }}">
+                    {{ $lastScreenshotTakenAtLabel }}
+                </time>
+            </flux:text>
+        @endif
+
         @if ($visualFeedEnabled)
-            <div class="absolute bottom-0 left-0 right-0 h-1 overflow-hidden bg-neutral-200/50 dark:bg-neutral-800/50" role="progressbar" aria-label="{{ __('Visual feed refresh interval') }}">
+            <div class="h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800" role="progressbar" aria-label="{{ __('Visual feed refresh interval') }}">
                 <div
                     class="h-full origin-left bg-neutral-900 dark:bg-white"
                     style="animation: visual-feed-interval {{ $visualFeedIntervalSeconds }}s linear infinite;"
                 ></div>
             </div>
+        @endif
+
+        @if ($screenshotDataUrl)
+            <img
+                src="{{ $screenshotDataUrl }}"
+                alt="{{ __('Screenshot') }}"
+                class="w-full rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/30"
+            />
+        @else
+            <flux:text class="text-sm text-zinc-600">
+                @if ($clientIsOffline)
+                    {{ __('Client is offline.') }}
+                @else
+                    {{ $visualFeedEnabled ? __('Waiting for screenshot…') : __('Visual feed is off.') }}
+                @endif
+            </flux:text>
         @endif
     </div>
 
