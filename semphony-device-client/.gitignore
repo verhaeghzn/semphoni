@@ -1,0 +1,5 @@
+## Device client local-only artifacts
+/data/buttons_config.json
+/credentials.txt
+/.DS_Store
+

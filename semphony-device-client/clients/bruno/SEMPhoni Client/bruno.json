@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Semphony Device Client",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
