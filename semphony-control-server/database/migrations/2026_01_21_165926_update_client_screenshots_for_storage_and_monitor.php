@@ -86,8 +86,35 @@ return new class extends Migration
         // Convert unique(client_id) -> unique(client_id, monitor_nr)
         $newUniqueName = 'client_screenshots_client_monitor_unique';
 
+        // Drop the unique constraint on client_id if it exists
+        // We need to find the actual index name first, as Laravel may have created it with a different name
+        if (DB::getDriverName() === 'mysql') {
+            $indexes = DB::select("
+                SELECT INDEX_NAME
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'client_screenshots'
+                AND COLUMN_NAME = 'client_id'
+                AND NON_UNIQUE = 0
+            ");
+            
+            foreach ($indexes as $index) {
+                // Drop each unique index on client_id that we find
+                DB::statement("ALTER TABLE `client_screenshots` DROP INDEX `{$index->INDEX_NAME}`");
+            }
+        } else {
+            // For non-MySQL databases, try to drop using Laravel's method
+            Schema::table('client_screenshots', function (Blueprint $table): void {
+                try {
+                    $table->dropUnique(['client_id']);
+                } catch (\Exception $e) {
+                    // Index doesn't exist, continue
+                }
+            });
+        }
+
+        // Create the new unique constraint
         Schema::table('client_screenshots', function (Blueprint $table) use ($newUniqueName): void {
-            $table->dropUnique(['client_id']);
             $table->unique(['client_id', 'monitor_nr'], $newUniqueName);
         });
 
