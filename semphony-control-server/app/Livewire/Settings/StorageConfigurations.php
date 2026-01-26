@@ -15,7 +15,7 @@ class StorageConfigurations extends Component
     // Form fields
     public string $name = '';
 
-    public string $type = 'sftp';
+    public string $type = '';
 
     public bool $isActive = true;
 
@@ -127,6 +127,12 @@ class StorageConfigurations extends Component
      */
     public function save(): void
     {
+        if (empty($this->type)) {
+            session()->flash('error', __('Please select a storage type.'));
+
+            return;
+        }
+
         $validated = $this->validate();
 
         $configuration = match ($this->type) {
@@ -265,13 +271,37 @@ class StorageConfigurations extends Component
     }
 
     /**
+     * Handle type change - clear configuration fields when switching types.
+     */
+    public function updatedType(string $value): void
+    {
+        // Clear all configuration fields when type changes
+        $this->sftpHost = '';
+        $this->sftpUsername = '';
+        $this->sftpPassword = '';
+        $this->sftpPort = 22;
+        $this->sftpRoot = '/';
+        $this->sftpDirectory = null;
+        $this->sftpPrivateKey = null;
+        $this->s3Key = '';
+        $this->s3Secret = '';
+        $this->s3Region = '';
+        $this->s3Bucket = '';
+        $this->s3Url = null;
+        $this->s3Endpoint = null;
+        $this->s3UsePathStyle = false;
+        $this->s3Directory = null;
+        $this->testResult = null;
+    }
+
+    /**
      * Reset the form.
      */
     private function resetForm(): void
     {
         $this->editingId = null;
         $this->name = '';
-        $this->type = 'sftp';
+        $this->type = '';
         $this->isActive = true;
         $this->sftpHost = '';
         $this->sftpUsername = '';
