@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\ClientLatestScreenshotController;
+use App\Http\Controllers\ClientMetaController;
+use App\Http\Controllers\ClientReverbAuthController;
+use App\Http\Controllers\ClientScreenshotStoreController;
 use App\Livewire\Clients\Create as ClientsCreate;
 use App\Livewire\Clients\Edit as ClientsEdit;
 use App\Livewire\Clients\Index as ClientsIndex;
@@ -12,10 +16,6 @@ use App\Livewire\Systems\Index as SystemsIndex;
 use App\Livewire\Users\Create as UsersCreate;
 use App\Livewire\Users\Edit as UsersEdit;
 use App\Livewire\Users\Index as UsersIndex;
-use App\Http\Controllers\ClientReverbAuthController;
-use App\Http\Controllers\ClientScreenshotStoreController;
-use App\Http\Controllers\ClientLatestScreenshotController;
-use App\Http\Controllers\ClientMetaController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +37,10 @@ Route::get('client/meta', ClientMetaController::class)
 Route::post('client/screenshots', ClientScreenshotStoreController::class)
     ->withoutMiddleware([VerifyCsrfToken::class])
     ->name('client.screenshots.store');
+
+Route::post('client/files', \App\Http\Controllers\ClientFileStoreController::class)
+    ->withoutMiddleware([VerifyCsrfToken::class])
+    ->name('client.files.store');
 
 Route::middleware(['auth', 'verified', '2fa'])->group(function () {
     Route::livewire('systems', SystemsIndex::class)->name('systems.index');

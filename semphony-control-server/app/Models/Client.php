@@ -83,6 +83,11 @@ class Client extends Model
         return $this->hasOne(ClientScreenshot::class);
     }
 
+    public function files(): HasMany
+    {
+        return $this->hasMany(ClientFile::class);
+    }
+
     public function isActive(int $seconds = 90): bool
     {
         if ($this->is_active === false) {

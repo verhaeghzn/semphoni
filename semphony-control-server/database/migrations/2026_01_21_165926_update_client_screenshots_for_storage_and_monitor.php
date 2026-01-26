@@ -87,22 +87,7 @@ return new class extends Migration
         $newUniqueName = 'client_screenshots_client_monitor_unique';
 
         // Drop the unique constraint on client_id if it exists
-        // Try multiple approaches to handle different index naming conventions
-        Schema::table('client_screenshots', function (Blueprint $table): void {
-            // Try dropping by column name (Laravel's default approach)
-            try {
-                $table->dropUnique(['client_id']);
-            } catch (\Exception $e) {
-                // Index might not exist or have a different name, try explicit name
-                try {
-                    $table->dropUnique('client_screenshots_client_id_unique');
-                } catch (\Exception $e2) {
-                    // Index doesn't exist, continue
-                }
-            }
-        });
-
-        // For MySQL/MariaDB, also try to find and drop any remaining unique indexes on client_id
+        // For MySQL/MariaDB, check if the index exists before trying to drop it
         if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
             try {
                 $indexes = DB::select("
@@ -123,6 +108,26 @@ return new class extends Migration
                 }
             } catch (\Exception $e) {
                 // Query failed, continue
+            }
+        } else {
+            // For other databases, try dropping by column name or explicit name
+            // Wrap in try-catch to handle cases where index doesn't exist
+            try {
+                Schema::table('client_screenshots', function (Blueprint $table): void {
+                    // Try dropping by column name (Laravel's default approach)
+                    try {
+                        $table->dropUnique(['client_id']);
+                    } catch (\Exception $e) {
+                        // Index might not exist or have a different name, try explicit name
+                        try {
+                            $table->dropUnique('client_screenshots_client_id_unique');
+                        } catch (\Exception $e2) {
+                            // Index doesn't exist, continue silently
+                        }
+                    }
+                });
+            } catch (\Exception $e) {
+                // Schema operation failed, index likely doesn't exist - continue
             }
         }
 

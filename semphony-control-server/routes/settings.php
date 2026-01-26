@@ -10,6 +10,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
     Route::livewire('settings/profile', Profile::class)->name('profile.edit');
+    Route::livewire('settings/storage-configurations', \App\Livewire\Settings\StorageConfigurations::class)->name('storage-configurations.index');
 });
 
 Route::middleware(['auth', 'verified', '2fa'])->group(function () {
