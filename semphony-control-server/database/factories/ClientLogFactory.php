@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\LogDirection;
+use App\Enums\LogSeverity;
 use App\Models\Client;
 use App\Models\Command;
 use App\Models\System;
@@ -26,6 +27,7 @@ class ClientLogFactory extends Factory
             'system_id' => $system,
             'client_id' => Client::factory()->for($system),
             'direction' => fake()->randomElement([LogDirection::Inbound, LogDirection::Outbound]),
+            'severity' => fake()->randomElement([LogSeverity::Info, LogSeverity::Error, LogSeverity::Critical]),
             'command_id' => fake()->boolean(70) ? Command::factory() : null,
             'summary' => fake()->sentence(),
             'payload' => fake()->boolean(50) ? ['example' => fake()->word()] : null,

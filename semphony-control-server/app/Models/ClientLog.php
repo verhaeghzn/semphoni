@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\LogDirection;
+use App\Enums\LogSeverity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,7 @@ class ClientLog extends Model
         'client_id',
         'system_id',
         'direction',
+        'severity',
         'command_id',
         'summary',
         'payload',
@@ -28,6 +30,7 @@ class ClientLog extends Model
     {
         return [
             'direction' => LogDirection::class,
+            'severity' => LogSeverity::class,
             'payload' => 'array',
         ];
     }

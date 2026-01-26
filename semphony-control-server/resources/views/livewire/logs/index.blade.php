@@ -50,6 +50,12 @@
                         $ok = data_get($inboundData, 'data.ok');
                         $message = data_get($inboundData, 'data.message');
                         $commandName = $command?->name ?? data_get($outboundData, 'data.payload.button_name') ?? data_get($outboundData, 'data.command_name') ?? '—';
+                        $severity = $inbound?->severity ?? $outbound?->severity;
+                        $severityColor = match ($severity?->value) {
+                            'error' => 'red',
+                            'critical' => 'red',
+                            default => 'zinc',
+                        };
                     @endphp
 
                     <details class="p-4">
@@ -61,6 +67,11 @@
                                         {{ $client->system?->name ?? '—' }} / {{ $client->name }}
                                     </flux:text>
                                     <flux:badge color="zinc">{{ $commandName }}</flux:badge>
+                                    @if ($severity)
+                                        <flux:badge color="{{ $severityColor }}">
+                                            {{ $severity->value }}
+                                        </flux:badge>
+                                    @endif
 
                                     @if (is_bool($ok))
                                         <flux:badge color="{{ $ok ? 'green' : 'red' }}">
@@ -118,6 +129,18 @@
                                 </flux:text>
                                 @if ($log->command)
                                     <flux:badge color="zinc">{{ $log->command->name }}</flux:badge>
+                                @endif
+                                @if ($log->severity)
+                                    @php
+                                        $severityColor = match ($log->severity->value) {
+                                            'error' => 'red',
+                                            'critical' => 'red',
+                                            default => 'zinc',
+                                        };
+                                    @endphp
+                                    <flux:badge color="{{ $severityColor }}">
+                                        {{ $log->severity->value }}
+                                    </flux:badge>
                                 @endif
                             </div>
 

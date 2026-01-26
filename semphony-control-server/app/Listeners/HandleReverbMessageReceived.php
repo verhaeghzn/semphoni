@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Enums\LogDirection;
+use App\Enums\LogSeverity;
 use App\Models\Client;
 use App\Models\ClientLog;
 use App\Models\Command;
@@ -136,6 +137,7 @@ class HandleReverbMessageReceived
             'client_id' => $client->id,
             'system_id' => $client->system_id,
             'direction' => LogDirection::Inbound,
+            'severity' => LogSeverity::Info,
             'command_id' => is_int($heartbeatCommandId) ? $heartbeatCommandId : null,
             'summary' => 'Heartbeat',
             'payload' => $payload,
@@ -198,11 +200,14 @@ class HandleReverbMessageReceived
         }
 
         $correlationId = is_string($data['correlation_id'] ?? null) ? $data['correlation_id'] : null;
+        $ok = data_get($data, 'ok', true);
+        $severity = is_bool($ok) && $ok === false ? LogSeverity::Error : LogSeverity::Info;
 
         ClientLog::query()->create([
             'client_id' => $client->id,
             'system_id' => $client->system_id,
             'direction' => LogDirection::Inbound,
+            'severity' => $severity,
             'command_id' => is_int($commandId) ? $commandId : null,
             'summary' => $correlationId ? 'Command result ('.$correlationId.')' : 'Command result',
             'payload' => $payload,
@@ -238,6 +243,7 @@ class HandleReverbMessageReceived
             'client_id' => $client->id,
             'system_id' => $client->system_id,
             'direction' => LogDirection::Inbound,
+            'severity' => LogSeverity::Info,
             'command_id' => null,
             'summary' => $summary,
             'payload' => $payload,

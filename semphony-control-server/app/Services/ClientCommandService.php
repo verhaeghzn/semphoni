@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ActionType;
 use App\Enums\CommandType;
 use App\Enums\LogDirection;
+use App\Enums\LogSeverity;
 use App\Events\ClientCommandDispatched;
 use App\Models\Client;
 use App\Models\ClientLog;
@@ -47,6 +48,7 @@ class ClientCommandService
             'client_id' => $client->id,
             'system_id' => $client->system_id,
             'direction' => LogDirection::Outbound,
+            'severity' => LogSeverity::Info,
             'command_id' => $command->id,
             'summary' => 'Executed '.$command->name,
             'payload' => [

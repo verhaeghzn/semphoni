@@ -7,6 +7,10 @@
                 <flux:navlist.item :href="route('two-factor.show')" wire:navigate>{{ __('Two-Factor Auth') }}</flux:navlist.item>
             @endif
             <flux:navlist.item :href="route('storage-configurations.index')" wire:navigate>{{ __('Storage Configurations') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('commands.index')" wire:navigate>{{ __('Commands') }}</flux:navlist.item>
+            @can('users.manage')
+                <flux:navlist.item :href="route('users.index')" wire:navigate>{{ __('Accounts') }}</flux:navlist.item>
+            @endcan
         </flux:navlist>
     </div>
 

@@ -2,18 +2,19 @@
 
 namespace App\Providers;
 
+use App\Enums\LogDirection;
+use App\Enums\LogSeverity;
+use App\Models\Client;
+use App\Models\ClientLog;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use React\EventLoop\Loop;
-use App\Enums\LogDirection;
-use App\Models\Client;
-use App\Models\ClientLog;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -101,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
                     'client_id' => $client->id,
                     'system_id' => $client->system_id,
                     'direction' => LogDirection::Outbound,
+                    'severity' => $isAlive ? LogSeverity::Info : LogSeverity::Error,
                     'command_id' => null,
                     'summary' => $isAlive ? 'Client is online' : 'Client is offline',
                     'payload' => [

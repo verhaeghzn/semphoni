@@ -24,19 +24,9 @@
                         {{ __('Clients') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="terminal" :href="route('commands.index')" :current="request()->routeIs('commands.*')" wire:navigate>
-                        {{ __('Commands') }}
-                    </flux:sidebar.item>
-
                     <flux:sidebar.item icon="file-text" :href="route('logs.index')" :current="request()->routeIs('logs.*')" wire:navigate>
                         {{ __('Logs') }}
                     </flux:sidebar.item>
-
-                    @can('users.manage')
-                        <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
-                            {{ __('Accounts') }}
-                        </flux:sidebar.item>
-                    @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
