@@ -12,20 +12,20 @@
             </div>
 
             <form wire:submit="save" class="space-y-6">
-        <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
-        <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+                <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
+                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
 
-        <flux:select wire:model="role" :label="__('Role')">
-            <flux:select.option value="User">{{ __('User') }}</flux:select.option>
-            <flux:select.option value="Admin">{{ __('Admin') }}</flux:select.option>
-        </flux:select>
+                <flux:select wire:model="role" :label="__('Role')">
+                    <flux:select.option value="User">{{ __('User') }}</flux:select.option>
+                    <flux:select.option value="Admin">{{ __('Admin') }}</flux:select.option>
+                </flux:select>
 
-        <flux:checkbox wire:model="emailVerified" :label="__('Mark email as verified')" />
+                <flux:checkbox wire:model="emailVerified" :label="__('Mark email as verified')" />
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            <flux:input wire:model="password" :label="__('Password')" type="password" required autocomplete="new-password" />
-            <flux:input wire:model="password_confirmation" :label="__('Confirm password')" type="password" required autocomplete="new-password" />
-        </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <flux:input wire:model="password" :label="__('Password')" type="password" required autocomplete="new-password" />
+                    <flux:input wire:model="password_confirmation" :label="__('Confirm password')" type="password" required autocomplete="new-password" />
+                </div>
 
                 <div class="flex items-center gap-3">
                     <flux:button variant="primary" type="submit">

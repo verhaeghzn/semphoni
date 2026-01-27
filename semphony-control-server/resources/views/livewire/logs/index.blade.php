@@ -6,7 +6,7 @@
         </flux:text>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <flux:select wire:model.live="systemId" :label="__('System (optional)')" placeholder="{{ __('All systems') }}">
             @foreach ($systems as $system)
                 <flux:select.option :value="$system->id">{{ $system->name }}</flux:select.option>
@@ -18,6 +18,13 @@
                 <flux:select.option :value="$client->id">
                     {{ $client->name }} ({{ $client->system?->name ?? '—' }})
                 </flux:select.option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="severityFilter" :label="__('Severity (optional)')" placeholder="{{ __('All severities') }}">
+            <flux:select.option value="">{{ __('All severities') }}</flux:select.option>
+            @foreach ($severities as $severity)
+                <flux:select.option :value="$severity->value">{{ ucfirst($severity->value) }}</flux:select.option>
             @endforeach
         </flux:select>
     </div>

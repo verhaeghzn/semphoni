@@ -1,52 +1,51 @@
-<div class="max-w-2xl space-y-8">
-    <div class="flex items-center justify-between gap-4">
-        <div>
-            <flux:heading size="lg">{{ __('Edit account') }}</flux:heading>
-            <flux:text class="mt-1 text-sm text-zinc-600">
-                {{ __('Update account details and security settings.') }}
-            </flux:text>
-        </div>
+<section class="w-full">
+    @include('partials.settings-heading')
 
-        <flux:button variant="outline" :href="route('users.index')" wire:navigate>
-            {{ __('Back') }}
-        </flux:button>
-    </div>
+    <flux:heading class="sr-only">{{ __('Edit account') }}</flux:heading>
 
-    <form wire:submit="save" class="space-y-6">
-        <flux:input wire:model="name" :label="__('Name')" type="text" required autocomplete="name" />
-        <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+    <x-settings.layout :heading="__('Edit account')" :subheading="__('Update account details and security settings.')">
+        <div class="my-6 max-w-2xl space-y-8">
+            <div class="flex justify-end">
+                <flux:button variant="outline" :href="route('users.index')" wire:navigate>
+                    {{ __('Back') }}
+                </flux:button>
+            </div>
 
-        <flux:select wire:model="role" :label="__('Role')">
-            <flux:select.option value="User">{{ __('User') }}</flux:select.option>
-            <flux:select.option value="Admin">{{ __('Admin') }}</flux:select.option>
-        </flux:select>
+            <form wire:submit="save" class="space-y-6">
+                <flux:input wire:model="name" :label="__('Name')" type="text" required autocomplete="name" />
+                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
 
-        <flux:checkbox wire:model="emailVerified" :label="__('Email verified')" />
+                <flux:select wire:model="role" :label="__('Role')">
+                    <flux:select.option value="User">{{ __('User') }}</flux:select.option>
+                    <flux:select.option value="Admin">{{ __('Admin') }}</flux:select.option>
+                </flux:select>
 
-        <div class="space-y-2">
-            <flux:heading>{{ __('Reset password (optional)') }}</flux:heading>
-            <flux:text class="text-sm text-zinc-600">
-                {{ __('Leave empty to keep the current password.') }}
-            </flux:text>
-        </div>
+                <flux:checkbox wire:model="emailVerified" :label="__('Email verified')" />
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            <flux:input wire:model="newPassword" :label="__('New password')" type="password" autocomplete="new-password" />
-            <flux:input wire:model="newPassword_confirmation" :label="__('Confirm new password')" type="password" autocomplete="new-password" />
-        </div>
+                <div class="space-y-2">
+                    <flux:heading>{{ __('Reset password (optional)') }}</flux:heading>
+                    <flux:text class="text-sm text-zinc-600">
+                        {{ __('Leave empty to keep the current password.') }}
+                    </flux:text>
+                </div>
 
-        <div class="flex items-center gap-3">
-            <flux:button variant="primary" type="submit">
-                {{ __('Save') }}
-            </flux:button>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <flux:input wire:model="newPassword" :label="__('New password')" type="password" autocomplete="new-password" />
+                    <flux:input wire:model="newPassword_confirmation" :label="__('Confirm new password')" type="password" autocomplete="new-password" />
+                </div>
 
-            <flux:button variant="outline" type="button" :href="route('users.index')" wire:navigate>
-                {{ __('Cancel') }}
-            </flux:button>
-        </div>
-    </form>
+                <div class="flex items-center gap-3">
+                    <flux:button variant="primary" type="submit">
+                        {{ __('Save') }}
+                    </flux:button>
 
-    <div class="rounded-xl border border-neutral-200 bg-white p-6 space-y-4">
+                    <flux:button variant="outline" type="button" :href="route('users.index')" wire:navigate>
+                        {{ __('Cancel') }}
+                    </flux:button>
+                </div>
+            </form>
+
+            <div class="rounded-xl border border-neutral-200 bg-white p-6 space-y-4">
         <div class="flex items-center justify-between gap-4">
             <div>
                 <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
@@ -69,10 +68,10 @@
                 </flux:button>
             </div>
         @endif
-    </div>
+            </div>
 
-    @if (! $this->isSelf)
-        <div class="rounded-xl border border-red-200 bg-white p-6 space-y-4">
+            @if (! $this->isSelf)
+                <div class="rounded-xl border border-red-200 bg-white p-6 space-y-4">
             <div>
                 <flux:heading>{{ __('Delete account') }}</flux:heading>
                 <flux:text class="mt-1 text-sm text-zinc-600">

@@ -370,3 +370,44 @@ it('creates pusher activity logs with info severity', function () {
     expect($log)->not->toBeNull();
     expect($log->severity)->toBe(LogSeverity::Info);
 });
+
+it('filters logs by severity in the logs viewer', function () {
+    $user = \App\Models\User::factory()->create();
+    $this->actingAs($user);
+
+    $system = System::factory()->create();
+    $client = Client::factory()->for($system)->create();
+
+    ClientLog::factory()->create([
+        'client_id' => $client->id,
+        'system_id' => $system->id,
+        'severity' => LogSeverity::Info,
+        'summary' => 'Unique info summary for filter test',
+        'direction' => LogDirection::Inbound,
+    ]);
+
+    ClientLog::factory()->create([
+        'client_id' => $client->id,
+        'system_id' => $system->id,
+        'severity' => LogSeverity::Error,
+        'summary' => 'Unique error summary for filter test',
+        'direction' => LogDirection::Inbound,
+    ]);
+
+    $component = \Livewire\Livewire::test(\App\Livewire\Logs\Index::class);
+
+    $component->assertSee('Unique info summary for filter test')
+        ->assertSee('Unique error summary for filter test');
+
+    $component->set('severityFilter', 'error')
+        ->assertSee('Unique error summary for filter test')
+        ->assertDontSee('Unique info summary for filter test');
+
+    $component->set('severityFilter', 'info')
+        ->assertSee('Unique info summary for filter test')
+        ->assertDontSee('Unique error summary for filter test');
+
+    $component->set('severityFilter', '')
+        ->assertSee('Unique info summary for filter test')
+        ->assertSee('Unique error summary for filter test');
+});

@@ -3,6 +3,7 @@
 namespace App\Livewire\Logs;
 
 use App\Enums\ActionType;
+use App\Enums\LogSeverity;
 use App\Models\Client;
 use App\Models\ClientLog;
 use App\Models\System;
@@ -18,6 +19,11 @@ class Index extends Component
     public ?int $clientId = null;
 
     public bool $showHeartbeats = false;
+
+    /**
+     * When null, show all severities. Otherwise filter to this severity only.
+     */
+    public ?string $severityFilter = null;
 
     /**
      * @var Collection<int, System>
@@ -67,12 +73,16 @@ class Index extends Component
             ->when($this->clientId !== null, function (Builder $query): void {
                 $query->where('client_id', $this->clientId);
             })
+            ->when($this->severityFilter !== null && $this->severityFilter !== '', function (Builder $query): void {
+                $query->where('severity', $this->severityFilter);
+            })
             ->latest('id')
             ->limit(500)
             ->get();
 
         return view('livewire.logs.index', [
             'items' => $this->toLogItems($logs)->take(200)->values(),
+            'severities' => LogSeverity::cases(),
         ]);
     }
 
